@@ -1,0 +1,17 @@
+# Makefile for comphot
+# # cc -O2 -o comphot comphot.c proclib.c -I ../cfitsio -L ../cfitsio -lcfitsio -lm -lgd
+
+CFLAGS=		-O2 -c -I ../cfitsio
+LFLAGS1 =	-L ../cfitsio
+LFLAGS2 =	-lcfitsio -lm -lgd
+CC =           g++
+
+.c.o :
+	$(CC) $(CFLAGS) $*.c
+
+COMPHOT = comphot.o proclib.o
+
+default:	comphot
+
+comphot:	$(COMPHOT)
+		$(CC) -o comphot  $(LFLAGS1) $(COMPHOT) $(LFLAGS2)
