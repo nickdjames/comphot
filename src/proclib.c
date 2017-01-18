@@ -20,7 +20,7 @@ void create_new_img_from_src(fitsfile *tgt, fitsfile *src, long axes[2], int bit
 {
 	int status = 0;
 	int i, nkeys;
-	char card[FLEN_CARD]; 
+	char card[FLEN_CARD];
 
 	fits_create_img(tgt, bitpix, 2, axes, &status);
 	if (status)
@@ -28,7 +28,7 @@ void create_new_img_from_src(fitsfile *tgt, fitsfile *src, long axes[2], int bit
 
 	fits_get_hdrspace(src, &nkeys, NULL, &status);
 
-	for (i = 1; i <= nkeys; i++)  { 
+	for (i = 1; i <= nkeys; i++)  {
 		fits_read_record(src, i, card, &status); /* read keyword */
 		if (fits_get_keyclass(card) > TYP_CMPRS_KEY)
 			fits_write_record(tgt, card, &status);
@@ -226,7 +226,7 @@ float skylevel(float inp[], long axes[2])
 			ct++;
 		}
 	}
-	
+
 	free(vals);
 	return sky/ct;
 }
@@ -254,12 +254,12 @@ float noise(float sd)
 {
 	float x;
 	float noise, noiseph;
-        do {
-                x = (float) rand() / RAND_MAX;
-        } while (x == 0);
-        noise = sd * sqrtf(-logf(x)); /* noise amplitude */
-        noiseph = 2 * M_PI * (float) rand() / RAND_MAX; /* noise phase */
-        return noise * cosf(noiseph);
+	do {
+			x = (float) rand() / RAND_MAX;
+	} while (x == 0);
+	noise = sd * sqrtf(-logf(x)); /* noise amplitude */
+	noiseph = 2 * M_PI * (float) rand() / RAND_MAX; /* noise phase */
+	return noise * cosf(noiseph);
 }
 
 // add zero mean Gaussian noise of SD to an image
@@ -280,7 +280,7 @@ void dumpline(float *buf, long axes[], long line)
 	end = start + axes[0];
 
 	for (i = start; i < end; i++)
-		printf("LINE %3d: %8.2f\n", line, buf[i]);
+		printf("LINE %3ld: %8.2f\n", line, buf[i]);
 }
 
 void dumparea(float *buf, long axes[], int start[], int r)
@@ -467,7 +467,7 @@ float subtract_sky(float *buf, long axes[])
 	}
 
 	rms = sqrt(sum/used);
-	
+
  	// printf("Image stats:  %.0f %.0f %.0f %.0f %.0f     Mean %.2f RMS %.2f\n", m0, m25, m50, m75, m100, mean, rms);
 
 	free(tmp);
@@ -506,7 +506,7 @@ double aperture(float *buf, long axes[], double centroid[], int radius)
 		}
 		centroid[0] += sumx/sum;
 		centroid[1] += sumy/sum;
-	
+
 	}
 	for (y = floor(centroid[1] - 1.5*radius); y <= floor(centroid[1]+1.5*radius); y++) {
 		for (x = floor(centroid[0] - 1.5*radius); x <= floor(centroid[0]+1.5*radius); x++) {
@@ -514,7 +514,7 @@ double aperture(float *buf, long axes[], double centroid[], int radius)
 			dy = y - centroid[1];
 	//		printf("PROF %.3f %.3f\n", sqrt(sqr(dx)+sqr(dy)), buf[y*axes[0]+x]);
 		}
-	} 
+	}
 
 //	printf("Centroid: %.2f %.2f %.2f\n", centroid[0], centroid[1], count);
 	return count;
@@ -584,7 +584,7 @@ float mean_removeoutliers(int n, float buf[], int noremove, int verbose)
 
 		t0 = m - c*s;
 		t1 = m + c*s; // limits
-#if 1		
+#if 1
 		// winsorize the set
 		for (i = 0; i < n; i++) {
 			if (buf[i] < t0)
@@ -602,7 +602,7 @@ float mean_removeoutliers(int n, float buf[], int noremove, int verbose)
 				buf[i] = m;
 		}
 #endif
-	
+
 		// calculate mean and std of new set (m1, s1)
 		mean = 0;
 		for (i = 0; i < n; i++)
@@ -612,18 +612,18 @@ float mean_removeoutliers(int n, float buf[], int noremove, int verbose)
 		for (i = 0; i < n; i++)
 			std += sqr(buf[i]-m1);
 		s1 = sqrt(std/n);
-		
+
 		s2 = 1.134*s1; // assume normal distribution and c = 1.5
-	
+
 		err = fabs(s2 - s)/s;
-	
-		// printf("%.2f %.2f %.2f %.2f %.2f %.2f %.5f\n", m, s, t0, t1, m1, s1, err); 
-	
+
+		// printf("%.2f %.2f %.2f %.2f %.2f %.2f %.5f\n", m, s, t0, t1, m1, s1, err);
+
 		m = m1;
 		s = s2;
-	
+
 	} while (err > 0.002);
-	
+
 	if (verbose > 1) {
 		printf("C %7.2f ", m1);
 		for (i = 0; i < n; i++)
@@ -639,7 +639,7 @@ float *img_filt(float *img, long axes[], int rad)
 	long x,y;
 	long i, j;
 	int n;
-	
+
 	float *res;
 	float *list;
 	float *ptr;
@@ -653,7 +653,7 @@ float *img_filt(float *img, long axes[], int rad)
 			for (i = -rad; i <= rad; i++) {
 				for (j = -rad; j <= rad; j++) {
 					ptr = get_pixel(img, x+i, y+j, axes);
-					if (ptr) 
+					if (ptr)
 						list[n++] = *ptr;
 
 				}

@@ -18,7 +18,6 @@
 #include <math.h>
 #include <gd.h>
 #include <time.h>
-#include <getopt.h>
 #include "fitsio.h"
 #include "proclib.h"
 
@@ -44,27 +43,27 @@ typedef struct {
 // process the command line arguments
 void process_args(int argc, char *argv[], PARAMS *p)
 {
-        int c;
+	int c;
 
 	p->flatimage = NULL; // default is no flat
 	p->apradius = -1; // default is to use auto
 
-        while ((c = getopt(argc, argv, OPTIONS)) != EOF) {
-                switch (c) {
-                case 'H':
-                        print_usage();
-                        exit(1);
-                case 'f': // flat field
-			p->flatimage = optarg;
-                        break;
-		case 'r': // manual radius
-			p->apradius = atof(optarg);
-			break;
-                default:
-                        print_usage();
-                        exit(1);
-                }
-        }
+	while ((c = getopt(argc, argv, OPTIONS)) != EOF) {
+		switch (c) {
+			case 'H':
+				print_usage();
+				exit(1);
+			case 'f': // flat field
+				p->flatimage = optarg;
+				break;
+			case 'r': // manual radius
+				p->apradius = atof(optarg);
+				break;
+			default:
+				print_usage();
+				exit(1);
+		}
+	}
 }
 
 
@@ -85,7 +84,7 @@ int rotate(long x, long y, long axes[2], int rot, long *xr, long *yr)
 		*yr = y;
 		break;
 	case 1: // 90 deg
-		*xr = sz - 1 - y;	
+		*xr = sz - 1 - y;
 		*yr = x;
 		break;
 	case 2: // 180 deg
@@ -118,7 +117,7 @@ int norm_subtract(float *img, float *grad, long axes[2])
 
 
 
-// Calculate the sky level using annular apertures of increasing inner radius until a termination condition is met 
+// Calculate the sky level using annular apertures of increasing inner radius until a termination condition is met
 int sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start, float width, float rms, float *maxr)
 {
 	int r, pixused, errors;
@@ -128,7 +127,7 @@ int sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start,
 	float sky;
 
 	pixels = (float *) malloc(sizeof(float)*axes[0]*axes[1]); // buffer for aperture pixels
-	// First do increasing annuli to determine the coma size. 
+	// First do increasing annuli to determine the coma size.
 	if (*maxr > 0)
 		rmin = *maxr;
 	else
@@ -142,7 +141,7 @@ int sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start,
 			for (x = -r; x <= r; x++) {
 				dist = scale * sqrt(x*x + y*y); // distance from centroid in arcsec
 				if ((dist >= rmin) && (dist < rmax)) { // inside annulus
-					ptr = get_pixel(buf, cent[0]+x, cent[1]+y, axes);	
+					ptr = get_pixel(buf, cent[0]+x, cent[1]+y, axes);
 					if (ptr)
 						pixels[pixused++] = *ptr;
 					else
@@ -205,14 +204,14 @@ int generate_falsecolour_image(float *buf, long axes[2], float rms, float max, i
 			if (blue < 0) blue = 0;
 
 			rotate(x, y, axes, rot, &xr, &yr);
-			
+
 			gdImageTrueColorPixel(image, xr, yr) = gdTrueColor(0, green, blue);
 		}
 	}
 
 	rotate(cent[0], cent[1], axes, rot, &xr, &yr);
 	cen[0] = xr;
-	cen[1] = yr;	
+	cen[1] = yr;
 
 	plot_circle(image, cen, ceil(5.6/scale));
 	plot_circle(image, cen, ceil(sky_inner/scale));
@@ -220,12 +219,12 @@ int generate_falsecolour_image(float *buf, long axes[2], float rms, float max, i
 	sprintf(txtbuf, "%.0f\"", sky_inner);
 	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(sky_inner/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
-	out = fopen("dump.jpg", "w");	
+	out = fopen("dump.jpg", "w");
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
 	}
-	gdImageDestroy(image);	
+	gdImageDestroy(image);
 	return 0;
 }
 
@@ -259,25 +258,25 @@ int generate_mono_image(float *buf, long axes[2], float rms, float max, int cent
 			if (green > 255) green = 255;
 
 			rotate(x, y, axes, rot, &xr, &yr);
-			
+
 			gdImageTrueColorPixel(image, xr, yr) = gdTrueColor(green, green, green);
 		}
 	}
 
 	rotate(cent[0], cent[1], axes, rot, &xr, &yr);
 	cen[0] = xr;
-	cen[1] = yr;	
+	cen[1] = yr;
 
 	plot_circle(image, cen, ceil(sky_outer/scale));
 	// sprintf(txtbuf, "%.0f\"", sky_inner);
 	// gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(sky_inner/scale), txtbuf, 0x00FFFFFF);
 
-	out = fopen("mono.jpg", "w");	
+	out = fopen("mono.jpg", "w");
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
 	}
-	gdImageDestroy(image);	
+	gdImageDestroy(image);
 	return 0;
 }
 
@@ -298,7 +297,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	float *mag1, *mag2;
 	float maxpix;
 	float vem;
-	
+
 	for (i = 0; i < axes[0] * axes[1]; i++) // subtract the initial sky estimate from the image
 		buf[i] -= background;
 
@@ -318,14 +317,14 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 
 	// allocate buffers for the various results
 	points = (int) ceil(max / step);
-	n1 = (int *) malloc(sizeof(int) * points);	
-	n2 = (int *) malloc(sizeof(int) * points);	
-	sum_mean =(float *)  malloc(sizeof(float) * points);	
-	sum_med = (float *) malloc(sizeof(float) * points);	
-	mean = (float *) malloc(sizeof(float) * points);	
-	med = (float *) malloc(sizeof(float) * points);	
-	mag1 = (float *) malloc(sizeof(float) * points);	
-	mag2 = (float *) malloc(sizeof(float) * points);	
+	n1 = (int *) malloc(sizeof(int) * points);
+	n2 = (int *) malloc(sizeof(int) * points);
+	sum_mean =(float *)  malloc(sizeof(float) * points);
+	sum_med = (float *) malloc(sizeof(float) * points);
+	mean = (float *) malloc(sizeof(float) * points);
+	med = (float *) malloc(sizeof(float) * points);
+	mag1 = (float *) malloc(sizeof(float) * points);
+	mag2 = (float *) malloc(sizeof(float) * points);
 
 	// output the check image
 	generate_falsecolour_image(buf, axes, rms, maxpix, cent, scale, max, max+30, rot);
@@ -479,34 +478,34 @@ int main(int argc, char *argv[])
 	}
 
 	// Read essential keys
-        fits_read_key(fixed_img, TDOUBLE, "CDELT1", &scalex, NULL, &status);
+	fits_read_key(fixed_img, TDOUBLE, "CDELT1", &scalex, NULL, &status);
 	handle_status(&status, 0, "CDELT1 tag missing");
-        fits_read_key(fixed_img, TDOUBLE, "CDELT2", &scaley, NULL, &status);
+	fits_read_key(fixed_img, TDOUBLE, "CDELT2", &scaley, NULL, &status);
 	handle_status(&status, 0, "CDELT2 tag missing");
-        fits_read_key(fixed_img, TDOUBLE, "CROTA2", &rotation, NULL, &status);
+	fits_read_key(fixed_img, TDOUBLE, "CROTA2", &rotation, NULL, &status);
 	handle_status(&status, 0, "CROTA2 tag missing");
-        fits_read_key(fixed_img, TDOUBLE, "MZERO", &zp, NULL, &status);
+	fits_read_key(fixed_img, TDOUBLE, "MZERO", &zp, NULL, &status);
 	handle_status(&status, 0, "MZERO tag missing");
-        fits_read_key(fixed_img, TSTRING, "DATE-OBS", date_obs, NULL, &status);
+	fits_read_key(fixed_img, TSTRING, "DATE-OBS", date_obs, NULL, &status);
 	handle_status(&status, 0, "DATE-OBS tag missing");
 
 	// read optional keys
-        fits_read_key(fixed_img, TDOUBLE, "EXPTIME", &exposure, NULL, &status);
+	fits_read_key(fixed_img, TDOUBLE, "EXPTIME", &exposure, NULL, &status);
 	if (handle_status(&status, 1, ""))
 		exposure = 0;
-        fits_read_key(fixed_img, TSTRING, "TELESCOP", telescope, NULL, &status);
+	fits_read_key(fixed_img, TSTRING, "TELESCOP", telescope, NULL, &status);
 	if (handle_status(&status, 1, ""))
 		strcpy(telescope, "Unknown");
-        fits_read_key(fixed_img, TSTRING, "INSTRUME", instrument, NULL, &status);
+	fits_read_key(fixed_img, TSTRING, "INSTRUME", instrument, NULL, &status);
 	if (handle_status(&status, 1, ""))
 		strcpy(telescope, "Unknown");
-        fits_read_key(fixed_img, TSTRING, "OBSERVER", observer, NULL, &status);
+	fits_read_key(fixed_img, TSTRING, "OBSERVER", observer, NULL, &status);
 	if (handle_status(&status, 1, ""))
 		strcpy(observer, "Unknown");
-        fits_read_key(fixed_img, TSTRING, "OBJECT", object, NULL, &status);
+	fits_read_key(fixed_img, TSTRING, "OBJECT", object, NULL, &status);
 	if (handle_status(&status, 1, ""))
 		strcpy(object, "Unknown");
-	
+
 	printf("# Comphot version %.2f\n", VERSION);
 
 	// Look for fcombine comment and use time string if available
@@ -539,7 +538,7 @@ int main(int argc, char *argv[])
 	else if (scale < 6)
 		step = 2*5.64;
 	else
-		step = 3*5.64; 
+		step = 3*5.64;
 
 	printf("Date: %s, Exposure: %.1f s\n", date_obs, exposure);
 	sscanf(date_obs, "%d-%d-%dT%d:%d:%d", &obs_yr, &obs_mn, &obs_da, &obs_hr, &obs_min, &obs_sec);
@@ -550,10 +549,10 @@ int main(int argc, char *argv[])
 	printf("Scale: %.2f \"/pix, FoV %.1fx%.1f arcmin, PA: %.1f deg, ZP: %.2f mag\n", scale, 60*fabs(scalex)*axes[0], 60*fabs(scaley)*axes[1], rotation,  zp);
 
 	// allocate image buffers
-	offset_buf = (float *) malloc(sizeof(float) * axes[0] * axes[1]); 
-	fixed_buf = (float *) malloc(sizeof(float) * axes[0] * axes[1]); 
+	offset_buf = (float *) malloc(sizeof(float) * axes[0] * axes[1]);
+	fixed_buf = (float *) malloc(sizeof(float) * axes[0] * axes[1]);
 	if (isgrad)
-		grad_buf = (float *) malloc(sizeof(float) * axes[0] * axes[1]); 
+		grad_buf = (float *) malloc(sizeof(float) * axes[0] * axes[1]);
 
 	// Read image data
 	fits_read_img(offset_img, TFLOAT, 1, axes[0]*axes[1], &nulval, offset_buf, &anynul, &status);
