@@ -6,7 +6,7 @@ find_path (GD_INCLUDE_PATH
 )
 
 if (WIN32)
-    SET(GD_NAMES ${GD_NAMES} bgd)
+    SET(GD_NAMES ${GD_NAMES} gd bgd libgd)
 else (WIN32)
     SET(GD_NAMES ${GD_NAMES} gd)
 endif (WIN32)

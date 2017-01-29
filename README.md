@@ -3,6 +3,15 @@ Comet photometry developed for the BAA comet section.
 
 ## Building
 ### Dependencies
+#### Boost
+Download latest from http://www.boost.org
+
+Follow the included documentation for building on your platform, e.g. for Linux:
+```
+./bootstrap.sh
+sudo ./b2 install
+```
+
 #### cfitsio:
 Download latest from http://heasarc.gsfc.nasa.gov/fitsio/
 e.g. http://heasarc.gsfc.nasa.gov/FTP/software/fitsio/c/cfitsio3410.tar.gz
