@@ -1,4 +1,8 @@
-#define	MAXLEN	1000
+#ifndef PROCLIB_H
+#define PROCLIB_H
+#pragma once
+
+#include <fitsio.h>
 
 typedef	struct {
 	double x,y;
@@ -39,3 +43,6 @@ int handle_status(int *status, int warning, const char *msg);
 float *img_filt(float *img, long axes[], int rad);
 
 int checksize(long img1[2], long img2[2]);
+
+#endif // PROCLIB_H
+

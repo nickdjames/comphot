@@ -11,62 +11,20 @@
 //
 #define VERSION 1.16
 
+#include "comphot.h"
+#include "proclib.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
 #include <math.h>
 #include <gd.h>
+#include <gdfontmb.h>
+#include <fitsio.h>
 #include <time.h>
-#include "fitsio.h"
-#include "proclib.h"
+#include <assert.h>
 
 #define	MAXBUF	1000
-
-
-#define OPTIONS "Hd:f:r:w:"
-
-void print_usage()
-{
-	fprintf(stderr, "Usage: comphot [opts] offset_img fixed_img cenx ceny\n");
-	fprintf(stderr, "cenx ceny - Photocentre (pixels)\n");
-	fprintf(stderr, "-r apmax - Optional photometric (arcsec)\n");
-	fprintf(stderr, "-f flat - Optional flat normalization file\n");
-}
-
-typedef struct {
-	char *flatimage;
-	double apradius;
-} PARAMS;
-
-
-// process the command line arguments
-void process_args(int argc, char *argv[], PARAMS *p)
-{
-	int c;
-
-	p->flatimage = NULL; // default is no flat
-	p->apradius = -1; // default is to use auto
-
-	while ((c = getopt(argc, argv, OPTIONS)) != EOF) {
-		switch (c) {
-			case 'H':
-				print_usage();
-				exit(1);
-			case 'f': // flat field
-				p->flatimage = optarg;
-				break;
-			case 'r': // manual radius
-				p->apradius = atof(optarg);
-				break;
-			default:
-				print_usage();
-				exit(1);
-		}
-	}
-}
-
-
 
 
 // rotate the image by 0=>0, 1=>90, 2=>180, 3=>270 but only if the image is square
@@ -181,7 +139,6 @@ int generate_falsecolour_image(float *buf, long axes[2], float rms, float max, i
 	float pix;
 	float val;
 	int red, green, blue;
-	extern gdFont *gdFontMediumBold;
 	char txtbuf[MAXBUF];
 	int cen[2];
 
@@ -239,7 +196,6 @@ int generate_mono_image(float *buf, long axes[2], float rms, float max, int cent
 	float pix;
 	float val;
 	int red, green, blue;
-	extern gdFont *gdFontMediumBold;
 	char txtbuf[MAXBUF];
 	int cen[2];
 
@@ -410,9 +366,8 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	return vem;
 }
 
-int main(int argc, char *argv[])
+void process( const ComphotConfig* config )
 {
-
 	fitsfile *offset_img, *fixed_img, *grad_img;
 	FILE *flat;
 	int status;
@@ -436,34 +391,29 @@ int main(int argc, char *argv[])
 	float sky, skymag;
 	float vem, coma;
 	int obs_yr, obs_mn, obs_da, obs_hr, obs_min, obs_sec;
-	PARAMS params;
-
-	process_args(argc, argv, &params);
-
-	if (optind+4 > argc) {
-		print_usage();
-		exit(2);
-	}
 
 	status = 0;
 	fits_clear_errmsg();
 
-	if (params.flatimage) { // option optional flat
-		if (fits_open_file(&grad_img, params.flatimage, READONLY, &status))
+	assert(config);
+	if (config->flatimage) { // optional flat image
+		if (fits_open_file(&grad_img, config->flatimage, READONLY, &status))
 			handle_status(&status, 0, "Flat image");
 		isgrad = 1;
 	}
 
-	if (fits_open_file(&offset_img, argv[optind], READONLY, &status)) {
-		printf("File is %s\n", argv[optind]);
+	assert(config->offsetimage);
+	if (fits_open_file(&offset_img, config->offsetimage, READONLY, &status)) {
+		printf("File is %s\n", config->offsetimage);
 		handle_status(&status, 0, "Offset image");
 	}
 
-	if (fits_open_file(&fixed_img, argv[optind+1], READONLY, &status))
+	assert(config->fixedimage);
+	if (fits_open_file(&fixed_img, config->fixedimage, READONLY, &status))
 		handle_status(&status, 0, "Non offset image");
 
-	cent[0] = atoi(argv[optind+2]);
-	cent[1] = atoi(argv[optind+3]); // start point for centroid
+	cent[0] = config->cenx;
+	cent[1] = config->ceny; // start point for centroid
 
 	status = 0;
 	fits_clear_errmsg();
@@ -577,7 +527,7 @@ int main(int argc, char *argv[])
 
 	// do the main processing job
 	rot = 0; // FIXME
-	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, params.apradius, zp, sky, rot, &coma);
+	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, zp, sky, rot, &coma);
 
 	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
