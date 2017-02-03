@@ -33,8 +33,9 @@ set (LIBRARY_PATHS ${LIBRARY_PATHS} ${CFITSIO_LIBRARY_PATH})
 
 # Handle platform specific configuration
 if (WIN32)
-    add_definitions (-D_USE_MATH_DEFINES)
+    add_definitions (-D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 else (WIN32)
+    set_target_properties (comphot PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra")
     find_library (M_LIBRARY_PATH m)
     set(LIBRARY_PATHS ${LIBRARY_PATHS} ${M_LIBRARY_PATH})
 endif (WIN32)
