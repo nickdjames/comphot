@@ -124,7 +124,7 @@ int sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start,
 	return sky;
 }
 
-int plot_circle(gdImagePtr img, int cent[2], int r)
+void plot_circle(gdImagePtr img, int cent[2], int r)
 {
 	gdImageArc(img, cent[0], cent[1], 2*r, 2*r, 0, 360, gdTrueColor(255, 255, 128));
 }

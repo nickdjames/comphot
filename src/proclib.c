@@ -234,7 +234,7 @@ float skylevel(float inp[], long axes[2])
 // estimate the image noise level by calculting the RMS of negative pixels. This assumes the sky has been removed
 float rms_sky(float *img, long axes[2])
 {
-	float sumsq = 0;
+	double sumsq = 0;
 	unsigned i;
 	unsigned ct = 0;
 	for (i = 0; i < axes[0] * axes[1]; i++) {
@@ -244,7 +244,7 @@ float rms_sky(float *img, long axes[2])
 		}
 	}
 	if (ct > 0)
-		return sqrt(sumsq/ct);
+		return (float) sqrt(sumsq/ct);
 	else
 		return -1;
 }
@@ -285,7 +285,7 @@ void dumpline(float *buf, long axes[], long line)
 
 void dumparea(float *buf, long axes[], int start[], int r)
 {
-	unsigned x, y;
+	long x, y;
 
 	for (y = start[1] - r; y <= start[1] + r ; y++) {
 		for (x = start[0] - r; x <= start[0] + r ; x++) {
@@ -297,7 +297,7 @@ void dumparea(float *buf, long axes[], int start[], int r)
 
 float centroid1d(float *buf, float sky, int rows, int wid, double *cent, double r, int debug_cen)
 {
-	float sum;
+	// float sum;
 	int x, y, idx;
 	float sum1, sum2;
 	float dx;
@@ -421,7 +421,7 @@ float subtract_sky(float *buf, long axes[])
 {
 	float *tmp;
 	int i;
-	float m0, m25, m50, m75, m100;
+	// float m0, m25, m50, m75, m100;
 	long size;
 	double rms, mean, sum;
 	int used;
@@ -438,11 +438,11 @@ float subtract_sky(float *buf, long axes[])
 
 	qsort(tmp, size, sizeof(float), fsortfunc); // sort to asc order
 
-	m0 = tmp[0];
-	m25 = tmp[size/4];
-	m50 = tmp[size/2];
-	m75 = tmp[3*size/4];
-	m100 = tmp[size-1];
+	// m0 = tmp[0];
+	// m25 = tmp[size/4];
+	// m50 = tmp[size/2];
+	// m75 = tmp[3*size/4];
+	// m100 = tmp[size-1];
 
 	// assume that 10% of the image pixels around the median are sky
 	sum = 0;
@@ -545,7 +545,7 @@ float combine_maxpix(int n, float buf[], int noremove)
 float mean_removeoutliers(int n, float buf[], int noremove, int verbose)
 {
 	int i;
-	double m, s, std, mean, median, m0, m1, s1, s2, err;
+	double m, s, std, mean, m0, m1, s1, s2, err;
 	double t0, t1, c = 1.5;
 
 	mean = 0;

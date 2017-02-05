@@ -77,12 +77,12 @@ Options parseOptions( int argc, char** argv )
     (
         "apmax,r",
         bpo::value< float >( &options.apradius ),
-        "Optional photometric (arcsec)"
+        "Optional photometric aperture radius (arcsec)"
     )
     (
         "flatimage,f",
         bpo::value< std::string >( &options.flatimage ),
-        "Optional flat normalization image (TIF)"
+        "Optional flat normalization image (FIT)"
     )
     (
         "help,h",
