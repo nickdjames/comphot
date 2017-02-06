@@ -9,7 +9,7 @@
 //
 //
 //
-#define VERSION 1.16
+#define VERSION 1.20
 
 #include "comphot.h"
 #include "proclib.h"
@@ -130,15 +130,15 @@ void plot_circle(gdImagePtr img, int cent[2], int r)
 }
 
 // Generate a check image which shows the comet's extent and the selected aperture sizes
-int generate_falsecolour_image(float *buf, long axes[2], float rms, float max, int cent[2], float scale, float sky_inner, float sky_outer, int rot)
+int generate_falsecolour_image(const char *name, float *buf, long axes[2], float rms, float max, int cent[2], float scale, float sky_inner, float sky_outer, int rot)
 {
 	gdImagePtr image;
 	FILE *out;
 	float *ptr;
 	long x, y, xr, yr;
 	float pix;
-	float val;
-	int red, green, blue;
+	// float val;
+	int green, blue;
 	char txtbuf[MAXBUF];
 	int cen[2];
 
@@ -176,7 +176,7 @@ int generate_falsecolour_image(float *buf, long axes[2], float rms, float max, i
 	sprintf(txtbuf, "%.0f\"", sky_inner);
 	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(sky_inner/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
-	out = fopen("dump.jpg", "w");
+	out = fopen(name, "w");
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
@@ -187,16 +187,16 @@ int generate_falsecolour_image(float *buf, long axes[2], float rms, float max, i
 
 
 // Generate a check image which shows the comet's extent and the selected aperture sizes
-int generate_mono_image(float *buf, long axes[2], float rms, float max, int cent[2], float scale, float sky_inner, float sky_outer, int rot)
+int generate_mono_image(const char *name, float *buf, long axes[2], float rms, float max, int cent[2], float scale, float sky_outer, int rot)
 {
 	gdImagePtr image;
 	FILE *out;
 	float *ptr;
 	long x, y, xr, yr;
 	float pix;
-	float val;
-	int red, green, blue;
-	char txtbuf[MAXBUF];
+	// float val;
+	int green;
+	// char txtbuf[MAXBUF];
 	int cen[2];
 
 	image = gdImageCreateTrueColor(axes[0], axes[1]);
@@ -227,7 +227,7 @@ int generate_mono_image(float *buf, long axes[2], float rms, float max, int cent
 	// sprintf(txtbuf, "%.0f\"", sky_inner);
 	// gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(sky_inner/scale), txtbuf, 0x00FFFFFF);
 
-	out = fopen("mono.jpg", "w");
+	out = fopen(name, "w");
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
@@ -236,17 +236,49 @@ int generate_mono_image(float *buf, long axes[2], float rms, float max, int cent
 	return 0;
 }
 
+int generate_profile_plot(const char *name, int points, float mag[])
+{
+	gdImagePtr image;
+	FILE *out;
+	const int sizex=640, sizey=480;
+	float scalex, scaley;
+	int i;
+
+	scaley = sizey / (mag[0] - mag[points-1]);
+	scalex = sizex / points;
+
+	image = gdImageCreateTrueColor(sizex, sizey);
+	for (i = 0; i<points-1; i++) {
+		gdImageLine(image,
+			(int) floor(0.5+scalex*i),
+			(int) floor(0.5*scaley*(mag[0]-mag[i])),
+			(int) floor(0.5+scalex*(i+1)),
+			(int) floor(0.5*scaley*(mag[0]-mag[i+1])),
+			gdTrueColor(255, 255, 128));
+	}
+
+	out = fopen(name, "w");
+	if (out) {
+		gdImageJpeg(image, out, 90);
+		fclose(out);
+	}
+	gdImageDestroy(image);
+	return 0;
+}
+
+
 // Extract magnitude data from the offset stack
 float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max, float zp, float background, int rot, float *coma)
 {
 	int x, y;
-	int ofs;
+	// int ofs;
 	float *pixels, pix, *sum_mean, *sum_med, *mean, *med;
 	float aprad, dist;
-	int i, r, rmax;
+	int i, r;
+	// int rmax;
 	int *n1, *n2;
 	int point=0, points;
-	float sky;
+	//float sky;
 	float *ptr;
 	int error;
 	float rms;
@@ -267,7 +299,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	for (i = 0; i < axes[0] * axes[1]; i++)
 		buf[i] -= background;
 
-	rmax = (int) ceil(max/scale); // max radius in pixels
+	// rmax = (int) ceil(max/scale); // max radius in pixels
 	// pixels = malloc(4*rmax*rmax*sizeof(float)); // buffer for aperture pixels
 	pixels = (float *) malloc(sizeof(float)*axes[0]*axes[1]); // buffer for aperture pixels
 
@@ -283,8 +315,8 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	mag2 = (float *) malloc(sizeof(float) * points);
 
 	// output the check image
-	generate_falsecolour_image(buf, axes, rms, maxpix, cent, scale, max, max+30, rot);
-	generate_mono_image(buf, axes, rms, maxpix, cent, scale, max, max+30, rot);
+	generate_falsecolour_image("dump.jpg", buf, axes, rms, maxpix, cent, scale, max, max+30, rot);
+	generate_mono_image("mono.jpg", buf, axes, rms, maxpix, cent, scale, max+30, rot);
 
 	aprad = step;
 	do { // measure for each aperture
@@ -332,6 +364,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 		mag2[i] = zp - 2.5 * log10(sum_med[i]);
 		printf("# %5.1f | %6d %7.0f | %5.1f %5.1f %5d %6.0f %6.0f %6.0f | %5.2f %5.2f\n", (i+1)*step, n1[i], sum_mean[i],  mean[i], med[i], n2[i],mean[i]*n2[i],  med[i]*n2[i],  sum_med[i], mag1[i], mag2[i]);
 	}
+	generate_profile_plot("profile.jpg", point, mag2);
 
 	// output the multibox estimates
 	printf(" 10x10  20x20  30x30  40x40  50x50  60x60\n");
@@ -369,11 +402,11 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 void process( const ComphotConfig* config )
 {
 	fitsfile *offset_img, *fixed_img, *grad_img;
-	FILE *flat;
+	// FILE *flat;
 	int status;
 	long axes[2], axeschk[2];
 	int cent[2];
-	int bitpix;
+	// int bitpix;
 	float *offset_buf, *fixed_buf, *grad_buf;
 	float nulval = 0;
 	int anynul;
@@ -514,7 +547,8 @@ void process( const ComphotConfig* config )
 	// If the image types are integer add a small amount of float Gaussian noise - this helps the median estimators converge
 	add_noise(offset_buf, axes, 1.0);
 	add_noise(fixed_buf, axes, 1.0);
-	sky = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
+	// sky = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
+	sky = skylevel(fixed_buf, axes, 1.0);
 	skymag = zp - 2.5 * log10(sky/pow(scale, 2));
 	printf("Sky background before normalization: %.1f  (%.2f mag/sqarcsec)\n", sky, skymag);
 
@@ -522,7 +556,8 @@ void process( const ComphotConfig* config )
 		norm_subtract(offset_buf, grad_buf, axes);
 		norm_subtract(fixed_buf, grad_buf, axes);
 	}
-	sky = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
+	// sky = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
+	sky = skylevel(fixed_buf, axes, 1.0);
 	printf("# Sky background from fixed stack: %.1f\n", sky);
 
 	// do the main processing job

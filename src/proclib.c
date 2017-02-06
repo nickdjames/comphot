@@ -15,7 +15,7 @@ int checksize(long img1[2], long img2[2])
 	return 0;
 }
 
-
+// create a new image based on the source header but with potentially different size and bitpix
 void create_new_img_from_src(fitsfile *tgt, fitsfile *src, long axes[2], int bitpix)
 {
 	int status = 0;
@@ -36,6 +36,7 @@ void create_new_img_from_src(fitsfile *tgt, fitsfile *src, long axes[2], int bit
 }
 
 
+// add a constant value to an image
 int add_const(float *a, float constval, long axes[2])
 {
 	long i;
@@ -59,7 +60,7 @@ int normalize(float *buf, long axes[2])
 	return 0;
 }
 
-// subtract b from a with optional normalisation
+// subtract image b from a with optional normalisation of the median
 int image_sub(float *a, float *b, long axes[2], int norm)
 {
 	long i;
@@ -76,7 +77,7 @@ int image_sub(float *a, float *b, long axes[2], int norm)
 	return 0;
 }
 
-
+// divide image a by image b
 int image_div(float *a, float *b, long axes[2])
 {
 	long i;
@@ -89,6 +90,7 @@ int image_div(float *a, float *b, long axes[2])
 	return 0;
 }
 
+// Limit image pixles to 0..limit
 int image_limit(float *a, float limit, long axes[2])
 {
 	long i;
@@ -139,7 +141,7 @@ int fsortfunc(const void *x1, const void *x2)
 }
 
 
-// determine median of array (non-destructive)
+// determine median of array of size n (non-destructive)
 float median(float inp[], int n)
 {
 	float *vals, med;
@@ -153,7 +155,7 @@ float median(float inp[], int n)
 	return med;
 }
 
-// determine mean of the lowest x %  of array (non-destructive)
+// determine mean of the lowest x %  of an array of size n (non-destructive)
 float mean_min(float inp[], int n, float x)
 {
 	float *vals;
@@ -198,7 +200,7 @@ int stats(float inp[], long axes[2], float level[], int steps)
 
 
 // determine sky level of array (non-destructive)
-float skylevel(float inp[], long axes[2])
+float skylevel(float inp[], long axes[2], float nsigma)
 {
 	float *vals, med, sky;
 	float rms;
@@ -209,19 +211,21 @@ float skylevel(float inp[], long axes[2])
 	vals = (float *) malloc(sizeof(float)*n);
 	for (i = 0; i < n; i++)
 		vals[i] = inp[i];
-	qsort(vals, n, sizeof(float), fsortfunc); // sort to ascending order
+
+	// first determine the median
+	qsort(vals, n, sizeof(float), fsortfunc);
 	med = vals[n/2];
 
-	// estimate the RMS using pixels below the median only
+	// then estimate the RMS using pixels below the median only
 	rms = 0;
 	for (i = 0; i < n/2; i++)
 		rms += powf((vals[i]-med),2);
 	rms = sqrtf(rms/(n/2));
 
-	// calculate mean of pixels within 2 * RMS of median
+	// then calculate the  mean using pixels within nsigma * RMS of median
 	ct = sky = 0;
 	for (i = 0; i < n/2; i++) {
-		if (fabsf(vals[i]-med) < (2*rms)) {
+		if (fabsf(vals[i]-med) < (nsigma*rms)) {
 			sky += vals[i];
 			ct++;
 		}
@@ -249,7 +253,7 @@ float rms_sky(float *img, long axes[2])
 		return -1;
 }
 
-
+// generate a Gaussian noise sample
 float noise(float sd)
 {
 	float x;
@@ -270,7 +274,7 @@ void add_noise(float *img, long axes[2], float sd)
 		img[i] += noise(sd);
 }
 
-
+// print a row from an image
 void dumpline(float *buf, long axes[], long line)
 {
 	unsigned i;
@@ -283,6 +287,7 @@ void dumpline(float *buf, long axes[], long line)
 		printf("LINE %3ld: %8.2f\n", line, buf[i]);
 }
 
+// print an area from an image
 void dumparea(float *buf, long axes[], int start[], int r)
 {
 	long x, y;
@@ -295,6 +300,7 @@ void dumparea(float *buf, long axes[], int start[], int r)
 	}
 }
 
+// determine the 1 dimensional centroid
 float centroid1d(float *buf, float sky, int rows, int wid, double *cent, double r, int debug_cen)
 {
 	// float sum;
@@ -343,7 +349,7 @@ float centroid1d(float *buf, float sky, int rows, int wid, double *cent, double 
 
 
 
-/* compute centroid */
+// determine the 2-D centroid
 void find_centroid(float *buf, long axes[2], int start[2], int r)
 {
 	float sum, sumy, sumx;
@@ -415,15 +421,12 @@ void cliplimits(float *buf, long axes[], float clip, float *min, float *max, int
 
 
 
-
-
-float subtract_sky(float *buf, long axes[])
+float subtract_sky(float *buf, long axes[], float *rms)
 {
 	float *tmp;
 	int i;
-	// float m0, m25, m50, m75, m100;
 	long size;
-	double rms, mean, sum;
+	double mean, sum;
 	int used;
 
 	size = axes[0] * axes[1];
@@ -436,15 +439,10 @@ float subtract_sky(float *buf, long axes[])
 	for (i = 0; i < size; i++)
 		tmp[i] = buf[i];
 
-	qsort(tmp, size, sizeof(float), fsortfunc); // sort to asc order
+	// first determine the median
+	qsort(tmp, size, sizeof(float), fsortfunc); 
 
-	// m0 = tmp[0];
-	// m25 = tmp[size/4];
-	// m50 = tmp[size/2];
-	// m75 = tmp[3*size/4];
-	// m100 = tmp[size-1];
-
-	// assume that 10% of the image pixels around the median are sky
+	// Then the mean assuming that 10% of the image pixels around the median are sky
 	sum = 0;
 	used = 0;
 	for (i = -size/20; i < size/20; i++) {
@@ -457,18 +455,17 @@ float subtract_sky(float *buf, long axes[])
 		buf[i] -= mean; // subtract estimated sky level from the image
 
 	// use negative pixels to estimate RMS sky noise
-	sum = 0;
-	used = 0;
-	for (i = 0; i < size; i++) {
-		if (buf[i] < 0) {
-			sum += sqr(buf[i]);
-			used++;
+	if (rms) {
+		sum = 0;
+		used = 0;
+		for (i = 0; i < size; i++) {
+			if (buf[i] < 0) {
+				sum += sqr(buf[i]);
+				used++;
+			}
 		}
+		*rms = sqrt(sum/used);
 	}
-
-	rms = sqrt(sum/used);
-
- 	// printf("Image stats:  %.0f %.0f %.0f %.0f %.0f     Mean %.2f RMS %.2f\n", m0, m25, m50, m75, m100, mean, rms);
 
 	free(tmp);
 
@@ -529,13 +526,13 @@ static int compfunc(const void *e1, const void *e2)
 	return (*p2 < *p1) ? 1 : -1;
 }
 
-float combine_minpix(int n, float buf[], int noremove)
+float combine_minpix(int n, float buf[])
 {
 	qsort(buf, n, sizeof(float), compfunc);
 	return buf[0];
 }
 
-float combine_maxpix(int n, float buf[], int noremove)
+float combine_maxpix(int n, float buf[])
 {
 	qsort(buf, n, sizeof(float), compfunc);
 	return buf[n-1];
