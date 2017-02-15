@@ -8,8 +8,6 @@
 //
 //
 //
-#define VERSION 1.21
-
 #include "comphot.h"
 #include "proclib.h"
 
@@ -555,7 +553,7 @@ void process( const ComphotConfig* config )
 	if (handle_status(&status, 1, ""))
 		strcpy(object, "Unknown");
 
-	printf("# Comphot version %.2f\n", VERSION);
+	printf("# Comphot version %s\n", VERSION);
 
 	// Look for fcombine comment and use time string if available
 	fits_read_str(fixed_img, "Mid time:", fcombine, &status);

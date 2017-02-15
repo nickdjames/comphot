@@ -1,0 +1,5 @@
+<CPackWiXPatch>
+  <CPackWiXFragment Id="CM_CP_Comphot.comphot.exe">
+    <Environment Id="Path" Action="set" Name="Path" Value="[CM_DP_Comphot]" Part="last"/>
+  </CPackWiXFragment>
+</CPackWiXPatch>

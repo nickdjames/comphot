@@ -1,15 +1,18 @@
 # Find cfitsio include and lib paths
 
-find_path (CFITSIO_INCLUDE_PATH
-    fitsio.h
-    PATHS /usr/local/include /usr/include
-)
-
-find_library (CFITSIO_LIBRARY_PATH
-  cfitsio
-  PATHS /usr/local/lib /usr/lib
-)
+find_path (CFITSIO_INCLUDE_PATH fitsio.h)
+find_library (CFITSIO_LIBRARY_PATH cfitsio)
 
 if (NOT CFITSIO_INCLUDE_PATH OR NOT CFITSIO_LIBRARY_PATH)
-    message(FATAL_ERROR "Failed to find library cfitsio")
+    message (FATAL_ERROR "Failed to find library cfitsio")
 endif (NOT CFITSIO_INCLUDE_PATH OR NOT CFITSIO_LIBRARY_PATH)
+
+if (WIN32)
+    get_filename_component (CFITSIO_NAME ${CFITSIO_LIBRARY_PATH} NAME_WE)
+    get_filename_component (CFITSIO_PATH ${CFITSIO_LIBRARY_PATH} DIRECTORY)
+    set (RUNTIME_LIBRARY_PATHS ${RUNTIME_LIBRARY_PATHS} ${CFITSIO_PATH}/${CFITSIO_NAME}.dll)
+endif (WIN32)
+
+set (INCLUDE_PATHS ${INCLUDE_PATHS} ${CFITSIO_INCLUDE_PATH})
+set (LIBRARY_PATHS ${LIBRARY_PATHS} ${CFITSIO_LIBRARY_PATH})
+
