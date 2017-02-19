@@ -223,6 +223,8 @@ float skylevel(float inp[], long axes[2], float nsigma)
 	rms = sqrtf(rms/(n/2));
 
 	// then calculate the  mean using pixels within nsigma * RMS of median
+	// FIXME - This is not a good approach since 1-sigma below the median is asymmetric relative to above
+	// For now just use the median
 	ct = sky = 0;
 	for (i = 0; i < n/2; i++) {
 		if (fabsf(vals[i]-med) < (nsigma*rms)) {
@@ -230,9 +232,9 @@ float skylevel(float inp[], long axes[2], float nsigma)
 			ct++;
 		}
 	}
-
 	free(vals);
-	return sky/ct;
+	// return sky/ct;
+	return med;
 }
 
 // estimate the image noise level by calculting the RMS of negative pixels. This assumes the sky has been removed

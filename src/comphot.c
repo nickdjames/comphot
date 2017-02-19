@@ -1,4 +1,3 @@
-// cc -O2 -o comphot comphot.c proclib.c -I ../cfitsio -L ../cfitsio -lcfitsio -lm -lgd
 //
 // Do comet photometry on FITS images
 // Nick James
@@ -9,7 +8,7 @@
 //
 //
 //
-#define VERSION 1.20
+#define VERSION 1.21
 
 #include "comphot.h"
 #include "proclib.h"
@@ -288,11 +287,11 @@ void sky_check(char *name, float *img, long axes[], float skyval, float rms)
 				pix = 0;
 
 			if (pix > 0) {
-				blue = (int) floor(255 * pix/rms);
+				blue = (int) floor(128 * pix/rms);
 				red = 0;
 			}
 			if (pix < 0) {
-				red = (int) floor(255 * (-pix)/rms);
+				red = (int) floor(128 * (-pix)/rms);
 				blue = 0;
 			}
 
@@ -303,6 +302,8 @@ void sky_check(char *name, float *img, long axes[], float skyval, float rms)
 				pix = 0;
 			if (pix > 0)
 				green = (int) floor(20 * pix/rms);
+			else
+				green  = 0;
 
 
 			if (green < 0) green = 0;
@@ -484,7 +485,7 @@ void process( const ComphotConfig* config )
 	char fcombine[FLEN_CARD];
 	int isgrad = 0;
 	int rot;
-	float sky, skymag;
+	float skyfix, skyofs, skymag;
 	float vem, coma;
 	int obs_yr, obs_mn, obs_da, obs_hr, obs_min, obs_sec;
 
@@ -611,21 +612,26 @@ void process( const ComphotConfig* config )
 	add_noise(offset_buf, axes, 1.0);
 	add_noise(fixed_buf, axes, 1.0);
 	// sky = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
-	sky = skylevel(fixed_buf, axes, 1.0);
-	skymag = zp - 2.5 * log10(sky/pow(scale, 2));
-	printf("Sky background before normalization: %.1f  (%.2f mag/sqarcsec)\n", sky, skymag);
+	skyfix = skylevel(fixed_buf, axes, 0.2);
+	skymag = zp - 2.5 * log10(skyfix/pow(scale, 2));
+	printf("Sky background before normalization (non-offset): %.1f  (%.2f mag/sqarcsec)\n", skyfix, skymag);
+	skyofs = skylevel(offset_buf, axes, 0.2);
+	skymag = zp - 2.5 * log10(skyofs/pow(scale, 2));
+	printf("# Sky background before normalization (offset): %.1f  (%.2f mag/sqarcsec)\n", skyofs, skymag);
 
 	if (isgrad) {
 		norm_subtract(offset_buf, grad_buf, axes);
 		norm_subtract(fixed_buf, grad_buf, axes);
 	}
-	// sky = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
-	sky = skylevel(fixed_buf, axes, 1.0);
-	printf("# Sky background from fixed stack: %.1f\n", sky);
+	// skyfix = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
+	// skyofs = median(offset_buf, axes[0]*axes[1]); // determine sky background for fixed image
+	skyfix = skylevel(fixed_buf, axes, 0.2);
+	skyofs = skylevel(offset_buf, axes, 0.2);
+	printf("# Sky background: %.1f (non-offset) %.1f (offset)\n", skyfix, skyofs);
 
 	// do the main processing job
 	rot = 0; // FIXME
-	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, zp, sky, rot, &coma);
+	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, zp, skyofs, rot, &coma);
 
 	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
