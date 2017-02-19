@@ -176,7 +176,7 @@ int generate_falsecolour_image(const char *name, float *buf, long axes[2], float
 	sprintf(txtbuf, "%.0f\"", sky_inner);
 	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(sky_inner/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
-	out = fopen(name, "w");
+	out = fopen(name, "wb");
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
@@ -227,7 +227,7 @@ int generate_mono_image(const char *name, float *buf, long axes[2], float rms, f
 	// sprintf(txtbuf, "%.0f\"", sky_inner);
 	// gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(sky_inner/scale), txtbuf, 0x00FFFFFF);
 
-	out = fopen(name, "w");
+	out = fopen(name, "wb");
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
@@ -257,13 +257,74 @@ int generate_profile_plot(const char *name, int points, float mag[])
 			gdTrueColor(255, 255, 128));
 	}
 
-	out = fopen(name, "w");
+	out = fopen(name, "wb");
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
 	}
 	gdImageDestroy(image);
 	return 0;
+}
+
+// dump a sky check image
+void sky_check(char *name, float *img, long axes[], float skyval, float rms)
+{
+	gdImagePtr image;
+	FILE *out;
+	float *checkimg, *ptr;
+	float pix;
+	int green, blue, red;
+	long x, y;
+
+	checkimg = img_medtile(img, axes, 32);
+	image = gdImageCreateTrueColor(axes[0], axes[1]);
+
+	for (y = 0; y < axes[1]; y++) {
+		for (x = 0; x < axes[0]; x++) {
+			ptr = get_pixel(checkimg, x, y, axes);
+			if (ptr)
+				pix = *ptr-skyval;
+			else
+				pix = 0;
+
+			if (pix > 0) {
+				blue = (int) floor(255 * pix/rms);
+				red = 0;
+			}
+			if (pix < 0) {
+				red = (int) floor(255 * (-pix)/rms);
+				blue = 0;
+			}
+
+			ptr = get_pixel(img, x, y, axes);
+			if (ptr)
+				pix = *ptr-skyval;
+			else
+				pix = 0;
+			if (pix > 0)
+				green = (int) floor(20 * pix/rms);
+
+
+			if (green < 0) green = 0;
+			if (green > 255) green = 255;
+
+			if (blue > 255) blue = 255;
+			if (blue < 0) blue = 0;
+			
+			if (red > 255) red = 255;
+			if (red < 0) red = 0;
+
+			gdImageTrueColorPixel(image, x, y) = gdTrueColor(red, green, blue);
+		}
+	}
+
+	out = fopen(name, "wb");
+	if (out) {
+		gdImageJpeg(image, out, 90);
+		fclose(out);
+	}
+	gdImageDestroy(image);
+	free(checkimg);
 }
 
 
@@ -298,6 +359,8 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	background = sky_annulus(buf, axes, cent, scale, 10, 30, rms, &max);
 	for (i = 0; i < axes[0] * axes[1]; i++)
 		buf[i] -= background;
+
+	sky_check("skycheck.jpg", buf, axes, 0, rms);
 
 	// rmax = (int) ceil(max/scale); // max radius in pixels
 	// pixels = malloc(4*rmax*rmax*sizeof(float)); // buffer for aperture pixels
@@ -570,8 +633,6 @@ void process( const ComphotConfig* config )
 
 
 	);
-
-
 
 	// then release storage and close image files
 	free(offset_buf);

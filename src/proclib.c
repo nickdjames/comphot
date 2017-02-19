@@ -631,6 +631,7 @@ float mean_removeoutliers(int n, float buf[], int noremove, int verbose)
 	return m;
 }
 
+// Apply a filter to an image. Return a pointer to the result
 float *img_filt(float *img, long axes[], int rad)
 {
 	long x,y;
@@ -663,3 +664,36 @@ float *img_filt(float *img, long axes[], int rad)
 	return res;
 }
 
+// Generate a median tile image with tiles of size n
+float *img_medtile(float *img, long axes[], int n)
+{
+	int x, y, x1, y1;
+	int i;
+	float *res, *tile, *ptr;
+	float val;
+	res = (float *) malloc(sizeof(float) * axes[0] * axes[1]);
+	tile = (float *) malloc(sizeof(float) * n * n);
+
+	for (y = 0; y < axes[1]; y += n) {
+		for (x = 0; x < axes[0]; x += n) {
+			i = 0;
+			for (y1 = 0; y1 < n; y1++) {
+				for (x1 = 0; x1 < n; x1++) {
+					ptr = get_pixel(img, x+x1, y+y1, axes);
+					if (ptr)
+						tile[i++] = *ptr;
+				}
+			}
+			val = median(tile, i);
+			for (y1 = 0; y1 < n; y1++) {
+				for (x1 = 0; x1 < n; x1++) {
+					ptr = get_pixel(res, x+x1, y+y1, axes);
+					if (ptr)
+						*ptr = val;
+				}
+			}
+		}
+	}
+	free (tile);
+	return res;
+}

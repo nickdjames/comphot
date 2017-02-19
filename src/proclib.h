@@ -43,6 +43,7 @@ int image_limit(float *a, float limit, long axes[2]);
 int handle_status(int *status, int warning, const char *msg);
 
 float *img_filt(float *img, long axes[], int rad);
+float *img_medtile(float *img, long axes[], int n);
 
 int checksize(long img1[2], long img2[2]);
 
