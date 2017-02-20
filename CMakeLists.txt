@@ -20,8 +20,10 @@ add_executable (comphot ${SRC_FILES})
 set (EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})
 
 # Set compiler requirements
-set_target_properties (comphot PROPERTIES CXX_STANDARD 11)
-set_target_properties (comphot PROPERTIES CXX_STANDARD_REQUIRED ON)
+target_compile_features(comphot PUBLIC
+    cxx_nullptr
+    cxx_nonstatic_member_init
+)
 
 # Set include directories
 set (INCLUDE_PATHS ${INCLUDE_PATHS} ${CFITSIO_INCLUDE_PATH})
@@ -35,7 +37,7 @@ set (LIBRARY_PATHS ${LIBRARY_PATHS} ${CFITSIO_LIBRARY_PATH})
 if (WIN32)
     add_definitions (-D_USE_MATH_DEFINES -D_CRT_SECURE_NO_WARNINGS)
 else (WIN32)
-    set_target_properties (comphot PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-std=c++11")
+    set_target_properties (comphot PROPERTIES COMPILE_OPTIONS "-Wall;-Wextra;-Wfloat-conversion")
     find_library (M_LIBRARY_PATH m)
     set(LIBRARY_PATHS ${LIBRARY_PATHS} ${M_LIBRARY_PATH})
 endif (WIN32)
