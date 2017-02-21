@@ -75,7 +75,7 @@ int norm_subtract(float *img, float *grad, long axes[2])
 
 
 // Calculate the sky level using annular apertures of increasing inner radius until a termination condition is met
-int sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start, float width, float rms, float *maxr)
+float sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start, float width, float rms, float *maxr)
 {
 	int r, pixused, errors;
 	float rmin, rmax, dist;
@@ -93,10 +93,10 @@ int sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start,
 		rmax = rmin + width;
 		pixused = 0;
 		errors = 0;
-		r = ceil(rmax/scale); // Max aperture radius in pixels
+		r = (int) ceil(rmax/scale); // Max aperture radius in pixels
 		for (y = -r; y <= r; y++) {
 			for (x = -r; x <= r; x++) {
-				dist = scale * sqrt(x*x + y*y); // distance from centroid in arcsec
+				dist = scale * sqrtf(x*x + y*y); // distance from centroid in arcsec
 				if ((dist >= rmin) && (dist < rmax)) { // inside annulus
 					ptr = get_pixel(buf, cent[0]+x, cent[1]+y, axes);
 					if (ptr)
@@ -123,9 +123,9 @@ int sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start,
 	return sky;
 }
 
-void plot_circle(gdImagePtr img, int cent[2], int r)
+void plot_circle(gdImagePtr img, int cent[2], double r)
 {
-	gdImageArc(img, cent[0], cent[1], 2*r, 2*r, 0, 360, gdTrueColor(255, 255, 128));
+	gdImageArc(img, cent[0], cent[1], (int) floor(2*r+0.5), (int) floor(2*r+0.5), 0, 360, gdTrueColor(255, 255, 128));
 }
 
 // Generate a check image which shows the comet's extent and the selected aperture sizes
@@ -151,11 +151,11 @@ int generate_falsecolour_image(const char *name, float *buf, long axes[2], float
 			else
 				pix = 0;
 
-			green = floorf(255 * logf(2*pix/rms) / fabsf(logf(2*max/rms)));
+			green = (int) floorf(255 * logf(2*pix/rms) / fabsf(logf(2*max/rms)));
 			if (green < 0) green = 0;
 			if (green > 255) green = 255;
 
-			blue = floor(200 * pix/rms);
+			blue = (int) floorf(200 * pix/rms);
 			if (blue > 200) blue = 200;
 			if (blue < 0) blue = 0;
 
@@ -173,7 +173,7 @@ int generate_falsecolour_image(const char *name, float *buf, long axes[2], float
 	plot_circle(image, cen, ceil(sky_inner/scale));
 	plot_circle(image, cen, ceil(sky_outer/scale));
 	sprintf(txtbuf, "%.0f\"", sky_inner);
-	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(sky_inner/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
+	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ (int) ceil(sky_inner/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
 	out = fopen(name, "wb");
 	if (out) {
@@ -208,7 +208,7 @@ int generate_mono_image(const char *name, float *buf, long axes[2], float rms, f
 			else
 				pix = 0;
 
-			green = floorf(255 * logf(2*pix/rms) / fabsf(logf(3*max/rms)));
+			green = (int) floorf(255 * logf(2*pix/rms) / fabsf(logf(3*max/rms)));
 			if (green < 0) green = 0;
 			if (green > 255) green = 255;
 
@@ -334,7 +334,8 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 {
 	int x, y;
 	// int ofs;
-	float *pixels, pix, *sum_mean, *sum_med, *mean, *med;
+	float *pixels, pix;
+	float *sum_mean, *sum_med, *mean, *med;
 	float aprad, dist;
 	int i, r;
 	// int rmax;
@@ -393,7 +394,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 				ptr = get_pixel(buf, cent[0]+x, cent[1]+y, axes);
 				if (ptr) {
 					pix = *ptr;
-					dist = scale * sqrt(x*x + y*y);
+					dist = scale * sqrtf(x*x + y*y);
 					if (dist < aprad) { // accumulate pixels inside an aperture of radius aprad
 						sum_mean[point] += pix;
 						n1[point]++;
@@ -423,9 +424,9 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 		if (i == 0)
 			sum_med[0] = sum_mean[0]; // start with simple sum for inner circle
 		else
-			sum_med[i] = sum_med[i-1] + med[i] * area; // accumulate rings of median samples
-		mag1[i] = zp - 2.5 * log10(sum_mean[i]);
-		mag2[i] = zp - 2.5 * log10(sum_med[i]);
+			sum_med[i] = (float) (sum_med[i-1] + med[i] * area); // accumulate rings of median samples
+		mag1[i] = zp - 2.5f * log10f(sum_mean[i]);
+		mag2[i] = zp - 2.5f * log10f(sum_med[i]);
 		printf("# %5.1f | %6d %7.0f | %5.1f %5.1f %5d %6.0f %6.0f %6.0f | %5.2f %5.2f\n", (i+1)*step, n1[i], sum_mean[i],  mean[i], med[i], n2[i],mean[i]*n2[i],  med[i]*n2[i],  sum_med[i], mag1[i], mag2[i]);
 	}
 	generate_profile_plot("profile.jpg", point, mag2);
@@ -447,7 +448,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	printf("Total integrated magnitude: %.2f (radius %.1f arcsec)\n", mag2[point-1], (point+1)*step);
 	vem = mag2[point-1];
 	if (coma)
-		*coma = 2 * (point+1)*step / 60.0;
+		*coma = 2.0f * (point+1)*step / 60.0f;
 
 	// release all of the allocated storage
 	free(n1);
@@ -474,8 +475,9 @@ void process( const ComphotConfig* config )
 	float *offset_buf, *fixed_buf, *grad_buf;
 	float nulval = 0;
 	int anynul;
-	double scale, step;
+	float step;
 	double scalex, scaley, exposure, rotation;
+	float scale;
 	double zp;
 	char date_obs[FLEN_CARD];
 	char telescope[FLEN_CARD];
@@ -578,14 +580,14 @@ void process( const ComphotConfig* config )
 	rotation = fmod(360 + rotation - 90 * rot, 360);
 #endif
 
-	scale = fabs(scalex * 3600.0); // convert scale to arcsec/pix
+	scale = (float) fabs(scalex * 3600.0); // convert scale to arcsec/pix
 
 	if (scale < 3) // select aperture step depending on how big the pixels are
-		step = 5.64;
+		step = 5.64f;
 	else if (scale < 6)
-		step = 2*5.64;
+		step = 2*5.64f;
 	else
-		step = 3*5.64;
+		step = 3*5.64f;
 
 	printf("Date: %s, Exposure: %.1f s\n", date_obs, exposure);
 	sscanf(date_obs, "%d-%d-%dT%d:%d:%d", &obs_yr, &obs_mn, &obs_da, &obs_hr, &obs_min, &obs_sec);
@@ -612,11 +614,11 @@ void process( const ComphotConfig* config )
 	add_noise(offset_buf, axes, 1.0);
 	add_noise(fixed_buf, axes, 1.0);
 	// sky = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
-	skyfix = skylevel(fixed_buf, axes, 0.2);
-	skymag = zp - 2.5 * log10(skyfix/pow(scale, 2));
+	skyfix = skylevel(fixed_buf, axes, 0.2f);
+	skymag = (float) zp - 2.5f * log10f(skyfix/powf(scale, 2));
 	printf("Sky background before normalization (non-offset): %.1f  (%.2f mag/sqarcsec)\n", skyfix, skymag);
-	skyofs = skylevel(offset_buf, axes, 0.2);
-	skymag = zp - 2.5 * log10(skyofs/pow(scale, 2));
+	skyofs = skylevel(offset_buf, axes, 0.2f);
+	skymag = (float) zp - 2.5f * log10f(skyofs/powf(scale, 2));
 	printf("# Sky background before normalization (offset): %.1f  (%.2f mag/sqarcsec)\n", skyofs, skymag);
 
 	if (isgrad) {
@@ -625,13 +627,13 @@ void process( const ComphotConfig* config )
 	}
 	// skyfix = median(fixed_buf, axes[0]*axes[1]); // determine sky background for fixed image
 	// skyofs = median(offset_buf, axes[0]*axes[1]); // determine sky background for fixed image
-	skyfix = skylevel(fixed_buf, axes, 0.2);
-	skyofs = skylevel(offset_buf, axes, 0.2);
+	skyfix = skylevel(fixed_buf, axes, 0.2f);
+	skyofs = skylevel(offset_buf, axes, 0.2f);
 	printf("# Sky background: %.1f (non-offset) %.1f (offset)\n", skyfix, skyofs);
 
 	// do the main processing job
 	rot = 0; // FIXME
-	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, zp, skyofs, rot, &coma);
+	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rot, &coma);
 
 	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,

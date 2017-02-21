@@ -56,7 +56,7 @@ int normalize(float *buf, long axes[2])
 		sum += buf[i];
 	sum /= axes[0]*axes[1];
 	for (i = 0; i < (axes[0]*axes[1]); i++)
-		buf[i] /= sum;
+		buf[i] /= (float) sum;
 	return 0;
 }
 
@@ -225,7 +225,8 @@ float skylevel(float inp[], long axes[2], float nsigma)
 	// then calculate the  mean using pixels within nsigma * RMS of median
 	// FIXME - This is not a good approach since 1-sigma below the median is asymmetric relative to above
 	// For now just use the median
-	ct = sky = 0;
+	ct = 0;
+	sky = 0;
 	for (i = 0; i < n/2; i++) {
 		if (fabsf(vals[i]-med) < (nsigma*rms)) {
 			sky += vals[i];
@@ -261,10 +262,10 @@ float noise(float sd)
 	float x;
 	float noise, noiseph;
 	do {
-			x = (float) rand() / RAND_MAX;
+			x = (float) rand() / (float) RAND_MAX;
 	} while (x == 0);
 	noise = sd * sqrtf(-logf(x)); /* noise amplitude */
-	noiseph = 2 * M_PI * (float) rand() / RAND_MAX; /* noise phase */
+	noiseph = (float) (2 * M_PI * (float) rand() / (float) RAND_MAX); /* noise phase */
 	return noise * cosf(noiseph);
 }
 
@@ -311,12 +312,14 @@ float centroid1d(float *buf, float sky, int rows, int wid, double *cent, double 
 	float dx;
 	float val;
 	int icent;
+	int lim;
 
 	icent = (int) floor(*cent+0.5); // nearest integer for centroid
+	lim = (int) floor(2*r + 0.5);
 
 	sum1 = sum2 = 0;
 	for (y = 0; y < rows; y++) {
-		for (x = -2*r; x <= 2*r; x++) {
+		for (x = -lim; x <= lim; x++) {
 			idx = icent + x;
 			val = buf[y*wid+idx] - sky;
 			if (val < 0)
@@ -338,8 +341,9 @@ float centroid1d(float *buf, float sky, int rows, int wid, double *cent, double 
 		printf("CEN2 %7.1f %7.1f %5.2f %6.2f\n", sum1, sum2, dx, *cent);
 
 	sum1 = 0;
+	lim = (int) floor(r + 0.5);
 	for (y = 0; y < rows; y++) {
-		for (x = -r; x <= r; x++) {
+		for (x = -lim; x <= lim; x++) {
 			idx = icent + x;
 			val = buf[y*wid+idx] - sky;
 			sum1 += val;
@@ -454,7 +458,7 @@ float subtract_sky(float *buf, long axes[], float *rms)
 	mean = sum/used;
 
 	for (i = 0; i < size; i++)
-		buf[i] -= mean; // subtract estimated sky level from the image
+		buf[i] -= (float) mean; // subtract estimated sky level from the image
 
 	// use negative pixels to estimate RMS sky noise
 	if (rms) {
@@ -466,12 +470,12 @@ float subtract_sky(float *buf, long axes[], float *rms)
 				used++;
 			}
 		}
-		*rms = sqrt(sum/used);
+		*rms = (float) sqrt(sum/used);
 	}
 
 	free(tmp);
 
-	return mean;
+	return (float) mean;
 }
 
 
@@ -486,8 +490,8 @@ double aperture(float *buf, long axes[], double centroid[], int radius)
 		// printf("Iteration %d, centroid %.2f %.2f\n", iteration, centroid[0], centroid[1]);
 		sum = sumx = sumy = 0;
 		count = 0;
-		for (y = floor(centroid[1] - 1.5*radius); y <= floor(centroid[1]+1.5*radius); y++) {
-			for (x = floor(centroid[0] - 1.5*radius); x <= floor(centroid[0]+1.5*radius); x++) {
+		for (y = (long) floor(centroid[1] - 1.5*radius); y <= (long) floor(centroid[1]+1.5*radius); y++) {
+			for (x = (long) floor(centroid[0] - 1.5*radius); x <= (long) floor(centroid[0]+1.5*radius); x++) {
 				dx = x - centroid[0];
 				dy = y - centroid[1];
 				sum += buf[y*axes[0]+x];
@@ -507,8 +511,8 @@ double aperture(float *buf, long axes[], double centroid[], int radius)
 		centroid[1] += sumy/sum;
 
 	}
-	for (y = floor(centroid[1] - 1.5*radius); y <= floor(centroid[1]+1.5*radius); y++) {
-		for (x = floor(centroid[0] - 1.5*radius); x <= floor(centroid[0]+1.5*radius); x++) {
+	for (y = (long) floor(centroid[1] - 1.5*radius); y <= (long) floor(centroid[1]+1.5*radius); y++) {
+		for (x = (long) floor(centroid[0] - 1.5*radius); x <= (long) floor(centroid[0]+1.5*radius); x++) {
 			dx = x - centroid[0];
 			dy = y - centroid[1];
 	//		printf("PROF %.3f %.3f\n", sqrt(sqr(dx)+sqr(dy)), buf[y*axes[0]+x]);
@@ -553,7 +557,7 @@ float mean_removeoutliers(int n, float buf[], int noremove, int verbose)
 	m0 = mean/n;
 
 	if (noremove)
-		return m0;
+		return (float) m0;
 
 	if (verbose > 1) {
 		printf("A %7.2f ", m0);
@@ -587,9 +591,9 @@ float mean_removeoutliers(int n, float buf[], int noremove, int verbose)
 		// winsorize the set
 		for (i = 0; i < n; i++) {
 			if (buf[i] < t0)
-				buf[i] = t0;
+				buf[i] = (float) t0;
 			if (buf[i] > t1)
-				buf[i] = t1;
+				buf[i] = (float) t1;
 		}
 #endif
 
@@ -630,7 +634,7 @@ float mean_removeoutliers(int n, float buf[], int noremove, int verbose)
 		printf("=====\n");
 	}
 
-	return m;
+	return (float) m;
 }
 
 // Apply a filter to an image. Return a pointer to the result
@@ -658,7 +662,7 @@ float *img_filt(float *img, long axes[], int rad)
 
 				}
 			}
-			res[y*axes[0]+x] = mean_min(list, n, 0.1);
+			res[y*axes[0]+x] = mean_min(list, n, 0.1f);
 		}
 	}
 
