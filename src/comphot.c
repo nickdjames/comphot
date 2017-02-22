@@ -8,6 +8,7 @@
 //
 //
 //
+
 #include "comphot.h"
 #include "proclib.h"
 
@@ -22,6 +23,7 @@
 #include <assert.h>
 
 #define	MAXBUF	1000
+#define	APLIMIT 0.8 // sky background limit for aperture termination (in sigma)
 
 
 // rotate the image by 0=>0, 1=>90, 2=>180, 3=>270 but only if the image is square
@@ -107,7 +109,7 @@ float sky_annulus(float *buf, long axes[2], int cent[2], float scale, float star
 		if ((pixused > 100) && (pixused > errors)) {
 			sky = median(pixels, pixused);
 			printf("# SKY: %.1f (%0.f -> %0.f) %d %d %.1f\n", rmin, ceil(rmin/scale), ceil(rmax/scale),  pixused, errors, sky);
-			if (sky <= 0.8 * rms) // What should this be?
+			if (sky <= APLIMIT * rms)
 				break;
 			if (*maxr > 0)
 				break;
@@ -264,7 +266,7 @@ int generate_profile_plot(const char *name, int points, float mag[])
 }
 
 // dump a sky check image
-void sky_check(char *name, float *img, long axes[], float skyval, float rms)
+void generate_sky_check(char *name, float *img, long axes[], float skyval, float rms, int cent[2], float scale, float sky_inner)
 {
 	gdImagePtr image;
 	FILE *out;
@@ -272,8 +274,9 @@ void sky_check(char *name, float *img, long axes[], float skyval, float rms)
 	float pix;
 	int green, blue, red;
 	long x, y;
+	char txtbuf[MAXBUF];
 
-	checkimg = img_medtile(img, axes, 32);
+	checkimg = img_medtile(img, axes, 16);
 	image = gdImageCreateTrueColor(axes[0], axes[1]);
 
 	for (y = 0; y < axes[1]; y++) {
@@ -285,11 +288,11 @@ void sky_check(char *name, float *img, long axes[], float skyval, float rms)
 				pix = 0;
 
 			if (pix > 0) {
-				blue = (int) floor(128 * pix/rms);
+				blue = (int) floor(256 * pix/rms);
 				red = 0;
 			}
 			if (pix < 0) {
-				red = (int) floor(128 * (-pix)/rms);
+				red = (int) floor(256 * (-pix)/rms);
 				blue = 0;
 			}
 
@@ -299,7 +302,7 @@ void sky_check(char *name, float *img, long axes[], float skyval, float rms)
 			else
 				pix = 0;
 			if (pix > 0)
-				green = (int) floor(20 * pix/rms);
+				green = (int) floor(64 * (pix/rms - APLIMIT));
 			else
 				green  = 0;
 
@@ -316,6 +319,9 @@ void sky_check(char *name, float *img, long axes[], float skyval, float rms)
 			gdImageTrueColorPixel(image, x, y) = gdTrueColor(red, green, blue);
 		}
 	}
+	plot_circle(image, cent, ceil(sky_inner/scale));
+	sprintf(txtbuf, "%.0f\"", sky_inner);
+	gdImageString(image, gdFontMediumBold, cent[0], cent[1]+ (int) ceil(sky_inner/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
 	out = fopen(name, "wb");
 	if (out) {
@@ -360,8 +366,6 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	for (i = 0; i < axes[0] * axes[1]; i++)
 		buf[i] -= background;
 
-	sky_check("skycheck.jpg", buf, axes, 0, rms);
-
 	// rmax = (int) ceil(max/scale); // max radius in pixels
 	// pixels = malloc(4*rmax*rmax*sizeof(float)); // buffer for aperture pixels
 	pixels = (float *) malloc(sizeof(float)*axes[0]*axes[1]); // buffer for aperture pixels
@@ -377,9 +381,10 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	mag1 = (float *) malloc(sizeof(float) * points);
 	mag2 = (float *) malloc(sizeof(float) * points);
 
-	// output the check image
+	// output the check images
 	generate_falsecolour_image("dump.jpg", buf, axes, rms, maxpix, cent, scale, max, max+30, rot);
 	generate_mono_image("mono.jpg", buf, axes, rms, maxpix, cent, scale, max+30, rot);
+	generate_sky_check("skycheck.jpg", buf, axes, -background, rms, cent, scale, max);
 
 	aprad = step;
 	do { // measure for each aperture
@@ -636,9 +641,12 @@ void process( const ComphotConfig* config )
 	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
 		vem, coma
-
-
 	);
+
+	printf("### %s %s %4d %d %.3f %.2f %.2f %.2f %.2f %.2f %.2f %s %s\n",
+		VERSION, config->offsetimage,
+		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
+		vem, coma, skymag, zp, skyofs, scale, observer, object);
 
 	// then release storage and close image files
 	free(offset_buf);

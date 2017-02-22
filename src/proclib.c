@@ -242,7 +242,7 @@ float skylevel(float inp[], long axes[2], float nsigma)
 float rms_sky(float *img, long axes[2])
 {
 	double sumsq = 0;
-	unsigned i;
+	long i;
 	unsigned ct = 0;
 	for (i = 0; i < axes[0] * axes[1]; i++) {
 		if (img[i] <= 0) {
@@ -272,7 +272,7 @@ float noise(float sd)
 // add zero mean Gaussian noise of SD to an image
 void add_noise(float *img, long axes[2], float sd)
 {
-	unsigned i;
+	long i;
 	for (i = 0; i < axes[0] * axes[1]; i++)
 		img[i] += noise(sd);
 }
