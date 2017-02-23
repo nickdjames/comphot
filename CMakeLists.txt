@@ -1,5 +1,5 @@
 # comphot top level CMakeLists
-cmake_minimum_required (VERSION 2.8.11)
+cmake_minimum_required (VERSION 3.1.3)
 project (COMPHOT)
 
 set (COMPHOT_VERSION_MAJOR 1)
