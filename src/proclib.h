@@ -32,7 +32,7 @@ float median(float vals[], int n);
 int stats(float inp[], long axes[2], float level[], int steps);
 float skylevel(float vals[], long axes[2], float nsigma);
 float *get_pixel(float *image, long x, long y, long axes[2]);
-float rms_sky(float *img, long axes[2]);
+float rms_sky(float *img, long axes[2], float background);
 void add_noise(float *img, long axes[2], float sd);
 
 int add_const(float *a, float constval, long axes[2]);

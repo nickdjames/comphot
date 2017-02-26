@@ -356,7 +356,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	for (i = 0; i < axes[0] * axes[1]; i++) // subtract the initial sky estimate from the image
 		buf[i] -= background;
 
-	rms = rms_sky(buf, axes);
+	rms = rms_sky(buf, axes, 0);
 	printf("# Residual sky background in offset stack: %.1f, RMS sky %.1f\n", median(buf, axes[0] * axes[1]), rms);
 
 	find_centroid(buf, axes, cent, 8);
@@ -490,7 +490,7 @@ void process( const ComphotConfig* config )
 	char fcombine[FLEN_CARD];
 	int isgrad = 0;
 	int rot;
-	float skyfix, skyofs, skymag;
+	float skyfix, skyofs, skymag, rms;
 	float vem, coma;
 	int obs_yr, obs_mn, obs_da, obs_hr, obs_min, obs_sec;
 
@@ -531,13 +531,13 @@ void process( const ComphotConfig* config )
 
 	// Read essential keys
 	fits_read_key(fixed_img, TDOUBLE, "CDELT1", &scalex, NULL, &status);
-	handle_status(&status, 0, "CDELT1 tag missing");
+	handle_status(&status, 0, "CDELT1 tag missing - non-offset frame needs astrometric cal");
 	fits_read_key(fixed_img, TDOUBLE, "CDELT2", &scaley, NULL, &status);
-	handle_status(&status, 0, "CDELT2 tag missing");
+	handle_status(&status, 0, "CDELT2 tag missing - non-offset frame needs astrometric cal");
 	fits_read_key(fixed_img, TDOUBLE, "CROTA2", &rotation, NULL, &status);
-	handle_status(&status, 0, "CROTA2 tag missing");
+	handle_status(&status, 0, "CROTA2 tag missing - non-offset frame needs astrometric cal");
 	fits_read_key(fixed_img, TDOUBLE, "MZERO", &zp, NULL, &status);
-	handle_status(&status, 0, "MZERO tag missing");
+	handle_status(&status, 0, "MZERO tag missing - non-offset frame needs photometric cal");
 	fits_read_key(fixed_img, TSTRING, "DATE-OBS", date_obs, NULL, &status);
 	handle_status(&status, 0, "DATE-OBS tag missing");
 
@@ -636,6 +636,7 @@ void process( const ComphotConfig* config )
 
 	// do the main processing job
 	rot = 0; // FIXME
+	rms = rms_sky(offset_buf, axes, skyofs);
 	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rot, &coma);
 
 	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
@@ -643,10 +644,10 @@ void process( const ComphotConfig* config )
 		vem, coma
 	);
 
-	printf("### %s %s %4d %d %.3f %.2f %.2f %.2f %.2f %.2f %.2f %s %s\n",
+	printf("### %s %s %4d %d %.3f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %s %s\n",
 		VERSION, config->offsetimage,
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
-		vem, coma, skymag, zp, skyofs, scale, observer, object);
+		vem, coma, skymag, zp, rms, skyofs, scale, observer, object);
 
 	// then release storage and close image files
 	free(offset_buf);

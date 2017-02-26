@@ -238,15 +238,15 @@ float skylevel(float inp[], long axes[2], float nsigma)
 	return med;
 }
 
-// estimate the image noise level by calculting the RMS of negative pixels. This assumes the sky has been removed
-float rms_sky(float *img, long axes[2])
+// estimate the image noise level by calculting the RMS of negative pixels.
+float rms_sky(float *img, long axes[2], float background)
 {
 	double sumsq = 0;
 	long i;
 	unsigned ct = 0;
 	for (i = 0; i < axes[0] * axes[1]; i++) {
-		if (img[i] <= 0) {
-			sumsq += img[i] * img[i];
+		if ((img[i]-background) <= 0) {
+			sumsq += pow(img[i]-background, 2.0);
 			ct++;
 		}
 	}
