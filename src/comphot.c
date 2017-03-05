@@ -24,6 +24,7 @@
 
 #define	MAXBUF	1000
 #define	APLIMIT 0.8 // sky background limit for aperture termination (in sigma)
+#define SKYRING	45
 
 
 // rotate the image by 0=>0, 1=>90, 2=>180, 3=>270 but only if the image is square
@@ -186,16 +187,15 @@ int generate_falsecolour_image(const char *name, float *buf, long axes[2], float
 
 
 // Generate a check image which shows the comet's extent and the selected aperture sizes
-int generate_mono_image(const char *name, float *buf, long axes[2], float rms, float max, int cent[2], float scale, float sky_outer, int rot)
+int generate_mono_image(const char *name, float *buf, long axes[2], float rms, float max, int cent[2], float scale, float apradius, int rot)
 {
 	gdImagePtr image;
 	FILE *out;
 	float *ptr;
 	long x, y, xr, yr;
 	float pix;
-	// float val;
 	int green;
-	// char txtbuf[MAXBUF];
+	char txtbuf[MAXBUF];
 	int cen[2];
 
 	image = gdImageCreateTrueColor(axes[0], axes[1]);
@@ -222,9 +222,9 @@ int generate_mono_image(const char *name, float *buf, long axes[2], float rms, f
 	cen[0] = xr;
 	cen[1] = yr;
 
-	plot_circle(image, cen, ceil(sky_outer/scale));
-	// sprintf(txtbuf, "%.0f\"", sky_inner);
-	// gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(sky_inner/scale), txtbuf, 0x00FFFFFF);
+	plot_circle(image, cen, ceil(apradius/scale));
+	sprintf(txtbuf, "%.0f\"", apradius);
+	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(apradius/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
 	out = fopen(name, "wb");
 	if (out) {
@@ -334,7 +334,7 @@ void generate_sky_check(char *name, float *img, long axes[], float skyval, float
 
 
 // Extract magnitude data from the offset stack
-float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max, float zp, float background, int rot, float *coma)
+float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max, float zp, float background, int rot, const char *object, float *coma)
 {
 	int x, y;
 	// int ofs;
@@ -352,6 +352,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	float *mag1, *mag2;
 	float maxpix;
 	float vem;
+	char fname[MAXBUF];
 
 	for (i = 0; i < axes[0] * axes[1]; i++) // subtract the initial sky estimate from the image
 		buf[i] -= background;
@@ -362,7 +363,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	find_centroid(buf, axes, cent, 8);
 	printf("# Centroid at %d %d, Max pixel is %.1f\n", cent[0], cent[1], maxpix = *(get_pixel(buf, cent[0], cent[1],  axes)));
 
-	background = sky_annulus(buf, axes, cent, scale, 10, 30, rms, &max);
+	background = sky_annulus(buf, axes, cent, scale, 10, SKYRING, rms, &max);
 	for (i = 0; i < axes[0] * axes[1]; i++)
 		buf[i] -= background;
 
@@ -382,9 +383,12 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	mag2 = (float *) malloc(sizeof(float) * points);
 
 	// output the check images
-	generate_falsecolour_image("dump.jpg", buf, axes, rms, maxpix, cent, scale, max, max+30, rot);
-	generate_mono_image("mono.jpg", buf, axes, rms, maxpix, cent, scale, max+30, rot);
-	generate_sky_check("skycheck.jpg", buf, axes, -background, rms, cent, scale, max);
+	sprintf(fname, "%s_dump.jpg", object);
+	generate_falsecolour_image(fname, buf, axes, rms, maxpix, cent, scale, max, max+SKYRING, rot);
+	sprintf(fname, "%s_mono.jpg", object);
+	generate_mono_image(fname, buf, axes, rms, maxpix, cent, scale, max, rot);
+	sprintf(fname, "%s_skycheck.jpg", object);
+	generate_sky_check(fname, buf, axes, -background, rms, cent, scale, max);
 
 	aprad = step;
 	do { // measure for each aperture
@@ -637,17 +641,17 @@ void process( const ComphotConfig* config )
 	// do the main processing job
 	rot = 0; // FIXME
 	rms = rms_sky(offset_buf, axes, skyofs);
-	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rot, &coma);
+	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rot, object, &coma);
 
 	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
 		vem, coma
 	);
 
-	printf("### %s %s %4d %d %.3f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %s %s\n",
-		VERSION, config->offsetimage,
+	printf("### %s %4d %02d %06.3f %6.2f %6.2f %6.2f %6.2f %6.2f %7.1f %6.2f %s %s %s\n",
+		VERSION,
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
-		vem, coma, skymag, zp, rms, skyofs, scale, observer, object);
+		vem, coma, skymag, zp, rms, skyofs, scale, observer, object, config->offsetimage);
 
 	// then release storage and close image files
 	free(offset_buf);
