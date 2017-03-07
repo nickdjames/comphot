@@ -19,6 +19,7 @@ struct Options
     std::string flatimage;
     int cenx = 0;
     int ceny = 0;
+    int border = 5; // ignore pixels this close to edge for estimates
     float apradius = -1; // Default is to use auto
 };
 
@@ -80,6 +81,11 @@ Options parseOptions( int argc, char** argv )
         "Optional photometric aperture radius (arcsec)"
     )
     (
+        "border,b",
+        bpo::value< int >( &options.border ),
+        "Ignore border pixels (default 5)"
+    )
+    (
         "flatimage,f",
         bpo::value< std::string >( &options.flatimage ),
         "Optional flat normalization image (FIT)"
@@ -136,6 +142,7 @@ ComphotConfig createComphotConfig( const Options& options )
     config.fixedimage = options.fixedimage.c_str();
     config.cenx = options.cenx;
     config.ceny = options.ceny;
+    config.border = options.border;
     config.apradius = options.apradius;
 
     if ( !options.flatimage.empty() )

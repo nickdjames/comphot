@@ -239,15 +239,21 @@ float skylevel(float inp[], long axes[2], float nsigma)
 }
 
 // estimate the image noise level by calculting the RMS of negative pixels.
-float rms_sky(float *img, long axes[2], float background)
+// ignores pixels within border of the edge
+float rms_sky(float *img, long axes[2], float background, int border)
 {
 	double sumsq = 0;
 	long i;
+	long x,y;
 	unsigned ct = 0;
-	for (i = 0; i < axes[0] * axes[1]; i++) {
-		if ((img[i]-background) <= 0) {
-			sumsq += pow(img[i]-background, 2.0);
-			ct++;
+	for (y = border; y < (axes[1]-border); y++) {
+		for (x = border; x < (axes[0]-border); x++) {
+			i = y * axes[0] + x;
+			if ((img[i]-background) <= 0) {
+				sumsq += pow(img[i]-background, 2.0);
+				ct++;
+				// printf("RMSsky %6ld %6d %.4f\n", i, ct, img[i]-background);
+			}
 		}
 	}
 	if (ct > 0)

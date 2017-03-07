@@ -8,6 +8,7 @@ typedef struct {
 	const char* flatimage;
 	int cenx;
 	int ceny;
+	int border;
 	float apradius;
 } ComphotConfig;
 

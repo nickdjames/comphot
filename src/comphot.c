@@ -334,7 +334,7 @@ void generate_sky_check(char *name, float *img, long axes[], float skyval, float
 
 
 // Extract magnitude data from the offset stack
-float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max, float zp, float background, int rot, const char *object, float *coma)
+float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max, float zp, float background, int rot, const char *object, float *coma, int border)
 {
 	int x, y;
 	// int ofs;
@@ -357,7 +357,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	for (i = 0; i < axes[0] * axes[1]; i++) // subtract the initial sky estimate from the image
 		buf[i] -= background;
 
-	rms = rms_sky(buf, axes, 0);
+	rms = rms_sky(buf, axes, 0, border);
 	printf("# Residual sky background in offset stack: %.1f, RMS sky %.1f\n", median(buf, axes[0] * axes[1]), rms);
 
 	find_centroid(buf, axes, cent, 8);
@@ -640,8 +640,8 @@ void process( const ComphotConfig* config )
 
 	// do the main processing job
 	rot = 0; // FIXME
-	rms = rms_sky(offset_buf, axes, skyofs);
-	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rot, object, &coma);
+	rms = rms_sky(offset_buf, axes, skyofs, config->border);
+	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rot, object, &coma, config->border);
 
 	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
