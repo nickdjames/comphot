@@ -24,7 +24,8 @@
 
 #define	MAXBUF	1000
 #define	APLIMIT 0.8 // sky background limit for aperture termination (in sigma)
-#define SKYRING	45
+#define SKYRING		40 // arcsec
+#define SEARCHRING	20 // arcsec
 
 
 // rotate the image by 0=>0, 1=>90, 2=>180, 3=>270 but only if the image is square
@@ -109,17 +110,17 @@ float sky_annulus(float *buf, long axes[2], int cent[2], float scale, float star
 		}
 		if ((pixused > 100) && (pixused > errors)) {
 			sky = median(pixels, pixused);
-			printf("# SKY: %.1f (%0.f -> %0.f) %d %d %.1f\n", rmin, ceil(rmin/scale), ceil(rmax/scale),  pixused, errors, sky);
+			// printf("# SKY: %.1f (%0.f -> %0.f) %d %d %.1f\n", rmin, ceil(rmin/scale), ceil(rmax/scale),  pixused, errors, sky);
 			if (sky <= APLIMIT * rms)
 				break;
 			if (*maxr > 0)
 				break;
 		} else
 			break;
-		rmin += width;
+		rmin += width/4;
 	} while (1);
 	*maxr = rmin;
-	printf("# Sky estimation annulus inner radius %.1f arcsec, skylevel %.1f\n", rmin, sky);
+	printf("# Annulus inner radius %.1f arcsec, ringlevel %.1f\n", rmin, sky);
 	free(pixels);
 	return sky;
 }
@@ -130,7 +131,7 @@ void plot_circle(gdImagePtr img, int cent[2], double r)
 }
 
 // Generate a check image which shows the comet's extent and the selected aperture sizes
-int generate_falsecolour_image(const char *name, float *buf, long axes[2], float rms, float max, int cent[2], float scale, float sky_inner, float sky_outer, int rot)
+int generate_falsecolour_image(const char *name, float *buf, long axes[2], float rms, float max, int cent[2], float scale, float coma_outer, float sky_inner, int rot)
 {
 	gdImagePtr image;
 	FILE *out;
@@ -171,10 +172,11 @@ int generate_falsecolour_image(const char *name, float *buf, long axes[2], float
 	cen[1] = yr;
 
 	plot_circle(image, cen, ceil(5.6/scale));
+	plot_circle(image, cen, ceil(coma_outer/scale));
 	plot_circle(image, cen, ceil(sky_inner/scale));
-	plot_circle(image, cen, ceil(sky_outer/scale));
-	sprintf(txtbuf, "%.0f\"", sky_inner);
-	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ (int) ceil(sky_inner/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
+	plot_circle(image, cen, ceil((sky_inner+SKYRING)/scale));
+	sprintf(txtbuf, "%.0f\"", coma_outer);
+	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ (int) ceil(coma_outer/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
 	out = fopen(name, "wb");
 	if (out) {
@@ -265,6 +267,86 @@ int generate_profile_plot(const char *name, int points, float mag[])
 	return 0;
 }
 
+// generate photometry check
+void generate_photom_check(char *name, float *img, long axes[], float rms, int cent[2], float scale, int points, float rad[], float med[])
+{
+	gdImagePtr image;
+	FILE *out;
+	float *ptr;
+	float pix, pixpos, pixneg;
+	long x,y,i;
+	int green, blue, red;
+	float *checkimg;
+	float max, min;
+	float logratio;
+	int r, r1, r2;
+
+	image = gdImageCreateTrueColor(axes[0], axes[1]);
+
+	checkimg = (float *) malloc(sizeof(float) * axes[0] * axes[1]);
+	memcpy(checkimg, img, sizeof(float) * axes[0] * axes[1]);
+	ptr = get_pixel(checkimg, cent[0], cent[1], axes);
+	if (ptr)
+		max = *ptr;
+	else
+		max = 1e5;
+	min = APLIMIT * rms / max;
+	logratio = log10f(max/min);
+
+	for (i = points-1; i >= 0; i--) {
+		r1 = floor(rad[i]); // outer
+		r2 = i ? floor(rad[i-1]) : 0; // inner 
+		for (y = -r1; y <= r1; y++) {
+			for (x = -r1; x <= r1; x++) {
+				r = sqrt(x*x + y*y);
+				if ((r <= r1) && (r > r2)) {
+					ptr = get_pixel(checkimg, cent[0]+x, cent[1]+y, axes);
+					if (ptr)
+						*ptr = *ptr - med[i];
+				}
+			}
+		}
+	}
+
+	for (y = 0; y < axes[1]; y++) {
+		for (x = 0; x < axes[0]; x++) {
+			ptr = get_pixel(checkimg, x, y, axes);
+			if (ptr)
+				pix = *ptr;
+			else
+				pix = 0;
+			if (pix > min)
+				pixpos = log10f(pix/min) / logratio;
+			else
+				pixpos = 0;
+			if (pixpos > 1)
+				pixpos = 1;
+			if (pix < -min)
+				pixneg = log10f(-pix/min) / logratio;
+			else
+				pixneg = 0;
+			if (pixneg > 1)
+				pixneg = 1;
+
+			blue = (int) floor(255 * pixpos);
+			red = (int) floor(255 * pixneg);
+			green = 0;
+
+			gdImageTrueColorPixel(image, x, y) = gdTrueColor(red, green, blue);
+		}
+	}
+		plot_circle(image, cent, rad[points-1]);
+
+	out = fopen(name, "wb");
+	if (out) {
+		gdImageJpeg(image, out, 90);
+		fclose(out);
+	}
+	gdImageDestroy(image);
+	free(checkimg);
+}
+
+
 // dump a sky check image
 void generate_sky_check(char *name, float *img, long axes[], float skyval, float rms, int cent[2], float scale, float sky_inner)
 {
@@ -334,12 +416,14 @@ void generate_sky_check(char *name, float *img, long axes[], float skyval, float
 
 
 // Extract magnitude data from the offset stack
-float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max, float zp, float background, int rot, const char *object, float *coma, int border)
+float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max,
+		float zp, float background, float rms, int rot, const char *object, float *coma, int border)
 {
 	int x, y;
 	// int ofs;
 	float *pixels, pix;
 	float *sum_mean, *sum_med, *mean, *med;
+	float *rad;
 	float aprad, dist;
 	int i, r;
 	// int rmax;
@@ -348,22 +432,25 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	//float sky;
 	float *ptr;
 	int error;
-	float rms;
 	float *mag1, *mag2;
 	float maxpix;
 	float vem;
+	float skyinner;
 	char fname[MAXBUF];
 
 	for (i = 0; i < axes[0] * axes[1]; i++) // subtract the initial sky estimate from the image
 		buf[i] -= background;
 
-	rms = rms_sky(buf, axes, 0, border);
-	printf("# Residual sky background in offset stack: %.1f, RMS sky %.1f\n", median(buf, axes[0] * axes[1]), rms);
+	printf("# Residual sky background in offset stack: %.1f. RMS sky from fixed %.1f\n", median(buf, axes[0] * axes[1]), rms);
 
 	find_centroid(buf, axes, cent, 8);
 	printf("# Centroid at %d %d, Max pixel is %.1f\n", cent[0], cent[1], maxpix = *(get_pixel(buf, cent[0], cent[1],  axes)));
 
-	background = sky_annulus(buf, axes, cent, scale, 10, SKYRING, rms, &max);
+	sky_annulus(buf, axes, cent, scale, 10, SEARCHRING, rms, &max); // search outwards from 10 arcsec to get limit of coma
+
+	skyinner = 1.3*max;
+
+	background = sky_annulus(buf, axes, cent, scale, skyinner, SKYRING, rms, &skyinner);
 	for (i = 0; i < axes[0] * axes[1]; i++)
 		buf[i] -= background;
 
@@ -381,10 +468,11 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	med = (float *) malloc(sizeof(float) * points);
 	mag1 = (float *) malloc(sizeof(float) * points);
 	mag2 = (float *) malloc(sizeof(float) * points);
+	rad = (float *) malloc(sizeof(float) * points);
 
 	// output the check images
 	sprintf(fname, "%s_dump.jpg", object);
-	generate_falsecolour_image(fname, buf, axes, rms, maxpix, cent, scale, max, max+SKYRING, rot);
+	generate_falsecolour_image(fname, buf, axes, rms, maxpix, cent, scale, max, skyinner, rot);
 	sprintf(fname, "%s_mono.jpg", object);
 	generate_mono_image(fname, buf, axes, rms, maxpix, cent, scale, max, rot);
 	sprintf(fname, "%s_skycheck.jpg", object);
@@ -396,6 +484,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 		sum_mean[point] = mean[point] = 0;
 		error = 0;
 		r = (int) ceil(aprad/scale); // max radius for this aperture in pixels
+		rad[point] = r;
 		for (y = -r; y <= r; y++) {
 			for (x = -r; x <= r; x++) {
 				ptr = get_pixel(buf, cent[0]+x, cent[1]+y, axes);
@@ -436,6 +525,9 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 		mag2[i] = zp - 2.5f * log10f(sum_med[i]);
 		printf("# %5.1f | %6d %7.0f | %5.1f %5.1f %5d %6.0f %6.0f %6.0f | %5.2f %5.2f\n", (i+1)*step, n1[i], sum_mean[i],  mean[i], med[i], n2[i],mean[i]*n2[i],  med[i]*n2[i],  sum_med[i], mag1[i], mag2[i]);
 	}
+	sprintf(fname, "%s_photcheck.jpg", object);
+	generate_photom_check(fname, buf, axes, rms, cent, scale, point, rad, med);
+
 	generate_profile_plot("profile.jpg", point, mag2);
 
 	// output the multibox estimates
@@ -640,15 +732,15 @@ void process( const ComphotConfig* config )
 
 	// do the main processing job
 	rot = 0; // FIXME
-	rms = rms_sky(offset_buf, axes, skyofs, config->border);
-	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rot, object, &coma, config->border);
+	rms = rms_sky(fixed_buf, axes, skyfix, config->border); // calculate RMS noise from fixed stack
+	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rms, rot, object, &coma, config->border);
 
 	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
 		vem, coma
 	);
 
-	printf("### %s %4d %02d %06.3f %6.2f %6.2f %6.2f %6.2f %6.2f %7.1f %6.2f %s %s %s\n",
+	printf("COMPHOT: %s %4d %02d %06.3f %6.2f %6.2f %6.2f %6.2f %6.2f %7.1f %6.2f %s %s %s\n",
 		VERSION,
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
 		vem, coma, skymag, zp, rms, skyofs, scale, observer, object, config->offsetimage);
