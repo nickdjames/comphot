@@ -2,7 +2,14 @@
 #define COMPHOT_H
 #pragma once
 
-typedef struct {
+// Windows specific export definition
+#ifdef _WIN32
+#define LIB_API __declspec(dllexport)
+#else
+#define LIB_API
+#endif
+
+typedef LIB_API struct ComphotConfig {
 	const char* offsetimage;
 	const char* fixedimage;
 	const char* flatimage;
@@ -12,7 +19,7 @@ typedef struct {
 	float apradius;
 } ComphotConfig;
 
-void process( const ComphotConfig* config );
+LIB_API void process( const ComphotConfig* config );
 
 #endif // COMPHOT_H
 
