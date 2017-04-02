@@ -27,6 +27,16 @@
 #define SKYRING		40 // arcsec
 #define SEARCHRING	20 // arcsec
 
+void strrep(char *s, char c1, char c2)
+{
+	while (*s != '\0') {
+		if (*s == c1)
+			*s = c2;
+		s++;
+	}
+}
+
+
 
 // rotate the image by 0=>0, 1=>90, 2=>180, 3=>270 but only if the image is square
 int rotate(long x, long y, long axes[2], int rot, long *xr, long *yr)
@@ -182,6 +192,8 @@ int generate_falsecolour_image(const char *name, float *buf, long axes[2], float
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
+	} else {
+		fprintf(stderr, "Could not open output file %s\n", name);
 	}
 	gdImageDestroy(image);
 	return 0;
@@ -232,6 +244,8 @@ int generate_mono_image(const char *name, float *buf, long axes[2], float rms, f
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
+	} else {
+		fprintf(stderr, "Could not open output file %s\n", name);
 	}
 	gdImageDestroy(image);
 	return 0;
@@ -341,6 +355,8 @@ void generate_photom_check(char *name, float *img, long axes[], float rms, int c
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
+	} else {
+		fprintf(stderr, "Could not open output file %s\n", name);
 	}
 	gdImageDestroy(image);
 	free(checkimg);
@@ -409,6 +425,8 @@ void generate_sky_check(char *name, float *img, long axes[], float skyval, float
 	if (out) {
 		gdImageJpeg(image, out, 90);
 		fclose(out);
+	} else {
+		fprintf(stderr, "Could not open output file %s\n", name);
 	}
 	gdImageDestroy(image);
 	free(checkimg);
@@ -472,10 +490,13 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 
 	// output the check images
 	sprintf(fname, "%s_dump.jpg", object);
+	strrep(fname, '/', '_');
 	generate_falsecolour_image(fname, buf, axes, rms, maxpix, cent, scale, max, skyinner, rot);
 	sprintf(fname, "%s_mono.jpg", object);
+	strrep(fname, '/', '_');
 	generate_mono_image(fname, buf, axes, rms, maxpix, cent, scale, max, rot);
 	sprintf(fname, "%s_skycheck.jpg", object);
+	strrep(fname, '/', '_');
 	generate_sky_check(fname, buf, axes, -background, rms, cent, scale, max);
 
 	aprad = step;
@@ -526,6 +547,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 		printf("# %5.1f | %6d %7.0f | %5.1f %5.1f %5d %6.0f %6.0f %6.0f | %5.2f %5.2f\n", (i+1)*step, n1[i], sum_mean[i],  mean[i], med[i], n2[i],mean[i]*n2[i],  med[i]*n2[i],  sum_med[i], mag1[i], mag2[i]);
 	}
 	sprintf(fname, "%s_photcheck.jpg", object);
+	strrep(fname, '/', '_');
 	generate_photom_check(fname, buf, axes, rms, cent, scale, point, rad, med);
 
 	generate_profile_plot("profile.jpg", point, mag2);
@@ -583,6 +605,7 @@ void process( const ComphotConfig* config )
 	char instrument[FLEN_CARD];
 	char observer[FLEN_CARD];
 	char object[FLEN_CARD];
+	char creator[FLEN_CARD];
 	char fcombine[FLEN_CARD];
 	int isgrad = 0;
 	int rot;
@@ -651,6 +674,9 @@ void process( const ComphotConfig* config )
 	if (handle_status(&status, 1, ""))
 		strcpy(observer, "Unknown");
 	fits_read_key(fixed_img, TSTRING, "OBJECT", object, NULL, &status);
+	if (handle_status(&status, 1, ""))
+		strcpy(object, "Unknown");
+	fits_read_key(fixed_img, TSTRING, "CREATOR", creator, NULL, &status);
 	if (handle_status(&status, 1, ""))
 		strcpy(object, "Unknown");
 
@@ -740,10 +766,10 @@ void process( const ComphotConfig* config )
 		vem, coma
 	);
 
-	printf("COMPHOT: %s %4d %02d %06.3f %6.2f %6.2f %6.2f %6.2f %6.2f %7.1f %6.2f %s %s %s\n",
+	printf("COMPHOT: %s %4d %02d %06.3f %6.2f %6.2f %6.2f %6.2f %6.2f %7.1f %6.2f %s %s %s %s\n",
 		VERSION,
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
-		vem, coma, skymag, zp, rms, skyofs, scale, observer, object, config->offsetimage);
+		vem, coma, skymag, zp, rms, skyofs, scale, creator, observer, object, config->offsetimage);
 
 	// then release storage and close image files
 	free(offset_buf);
