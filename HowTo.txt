@@ -1,0 +1,93 @@
+HowTo guide for comphot
+
+Comphot is a program to extract total comet magnitudes from FITS files which have been 
+
+Comphot is a command line program which runs on Windows and Linux machines.
+
+Windows Installation
+====================
+
+Comphot should run under all versions of Windows and has been tested under Windows 7 and Windows 10. Download the latest Windows installer from:
+
+http://www.nickdjames.com/comphot/Win32
+
+Right click on the msi and then select "install". You will need to provide admin rights for the install to complete.
+
+When the installation is complete open a command window (either the old cmd.exe or the new Windows Powershell) and type
+
+comphot
+
+You should see something like:
+
+PS C:\Users\ndj> comphot
+Error: the option '--cenx' is required but missing
+Usage: C:\Program Files (x86)\Comphot\Comphot\comphot.exe [options] offsetimage fixedimage cenx ceny:
+
+  offsetimage/fixedimage Offset and fixed images (FIT)
+  cenx/centy             Photocentre (pixels)
+
+Options:
+  -r [ --apmax ] arg     Optional photometric aperture radius (arcsec)
+  -b [ --border ] arg    Ignore border pixels (default 5)
+  -f [ --flatimage ] arg Optional flat normalization image (FIT)
+  -h [ --help ]          Usage info
+
+PS C:\Users\ndj>
+
+This confirms that the program has installed correctly.
+
+
+Linux installation
+==================
+
+A pre-built binary is available from:
+
+http://www.nickdjames.com/comphot/Linux/
+
+Unpack the tar file into a directory on your path. If this binary does not work for your system you can download the source and build it yourself. The source is available via Git:
+
+https://github.com/nickdjames/comphot.git
+
+When you have the binary installed just type:
+
+comphot
+
+and you should see something like:
+
+[ndj@fedora observations]$ comphot
+Error: the option '--cenx' is required but missing
+Usage: comphot [options] offsetimage fixedimage cenx ceny:
+
+  offsetimage/fixedimage Offset and fixed images (FIT)
+  cenx/centy             Photocentre (pixels)
+
+Options:
+  -r [ --apmax ] arg     Optional photometric aperture radius (arcsec)
+  -b [ --border ] arg    Ignore border pixels (default 5)
+  -f [ --flatimage ] arg Optional flat normalization image (FIT)
+  -h [ --help ]          Usage info
+
+[ndj@fedora observations]$
+
+This confirms that the program has installed correctly.
+
+
+Usage
+=====
+
+Comphot is a command line program which requires at least two input FITS files. One of these is stacked on the stars and the other is stacked on on the comet. The stacking can be done using any program you like but the approach you use must be the same for both images. If the comet is not moving fast so that it does not trail significantly during the stacked exposure then you can simply stack on stars and give comphot the same filename twice. The file that is stacked on the stars must contain the FITS header keyword MZERO. This defines the magnitude zero point for the image. There are a number of ways of getting this keyword into the file but the easiest way for Windows users is to astrometrically reduce the image in Astrometrica with "autosave" FITS file turned on. It is recommended that you use the UCAC-4 catalogue for this reduction. For unfiltered CCDs use the R band and for green filtered CCDs use the V band.
+
+The most basic approach to using comphot is to type:
+
+comphot offset.fit fixed.fit x y
+
+where offset.fit is the image stacked on the comet motion and fixed.fit is the image stacked on the stars. X and Y are the coordinates of the photocentre of the comet's coma measured using Astrometrica or some other program.
+
+Comphot produces output to the command line which describes the reduction and this can be sent to a file using the standard syntax for file redirection in your operating system (usually "> file" on Windows or Linux). Comphot also produces some check images which can be used to check the results. Of these, the most useful are:
+
+*dump.jpg. This shows the estimated coma diameter along with the photometric apertures used by the program for both the coma and the sky background.
+
+*skycheck.jpg - This shows how flat your sky background is. Areas below the extimated sky level are shown in red and areas above are shown in blue. Comphot needs a very flat sky to get a good estimate of the coma diameter. A non-flat sky will be very obvious from this check image. If your sky background is not flat you can give comphot a sky correction image using the -f option. This correction image should be a synthesised sky background which will be removed from the FITS image before the measurement is performed. Such a synthesized image can be generated in a number of ways but Windows users can use IRIS to generate such an image.
+
+
+

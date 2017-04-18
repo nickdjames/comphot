@@ -40,6 +40,7 @@ int normalize(float *buf, long axes[2]);
 int image_sub(float *a, float *b, long axes[2], int norm);
 int image_div(float *a, float *b, long axes[2]);
 int image_limit(float *a, float limit, long axes[2]);
+int image_flip(float *img, long axes[2]);
 int handle_status(int *status, int warning, const char *msg);
 
 float *img_filt(float *img, long axes[], int rad);

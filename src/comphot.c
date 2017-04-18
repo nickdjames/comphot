@@ -696,7 +696,7 @@ void process( const ComphotConfig* config )
 		rotation += 180;
 
 
-#if 1
+#if 0
 	rot = (int) floor(0.5 + (rotation/90));
 	while (rot < 0)
 		rot += 4;

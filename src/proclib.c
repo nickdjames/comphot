@@ -103,6 +103,23 @@ int image_limit(float *a, float limit, long axes[2])
 	return 0;
 }
 
+// in place image flip
+int image_flip(float *img, long axes[2])
+{
+	long x, y;
+	float *row;
+
+	row = (float *) malloc(sizeof(float) * axes[0]);
+
+	for (y = 0; y < axes[1]; y++) {
+		for (x = 0; x < axes[0]; x++)
+			row[axes[0]-1-x] = img[y*axes[0]+x]; // flip the row
+		memcpy(&img[y*axes[0]], row, sizeof(float) * axes[0]); // copy the flipped row back to the image
+	}
+
+	free(row);
+	return 0;
+}
 
 
 // Handle CFITSIO status reports
