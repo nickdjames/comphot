@@ -1,6 +1,8 @@
 HowTo guide for comphot
 
-Comphot is a program to extract total comet magnitudes from FITS files which have been 
+Comphot is a program to extract total comet magnitudes from FITS files which have been photometrically reduced to determine the magnitude zero point of the image. The program uses a set of criteria to determine the detectable coma diameter and then measures the flux within this aperture using a median annulus technique which assumes rotational symmetry and which ignores stars. The basic method is described in an article in the Comet's Tale (issue 35) on page 16. This is available from:
+
+https://britastro.org/pdf/CometSection/tail35.pdf
 
 Comphot is a command line program which runs on Windows and Linux machines.
 
@@ -89,5 +91,10 @@ Comphot produces output to the command line which describes the reduction and th
 
 *skycheck.jpg - This shows how flat your sky background is. Areas below the extimated sky level are shown in red and areas above are shown in blue. Comphot needs a very flat sky to get a good estimate of the coma diameter. A non-flat sky will be very obvious from this check image. If your sky background is not flat you can give comphot a sky correction image using the -f option. This correction image should be a synthesised sky background which will be removed from the FITS image before the measurement is performed. Such a synthesized image can be generated in a number of ways but Windows users can use IRIS to generate such an image.
 
+An example of the use of the program with a sky background correction image is:
+
+comphot -f skycorrect.fit offset.fit fixed.fit x y
+
+where skycorrect.fit is the name of the sky correction image.
 
 
