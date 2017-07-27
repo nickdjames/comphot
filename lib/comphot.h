@@ -13,6 +13,7 @@ typedef LIB_API struct ComphotConfig {
 	const char* offsetimage;
 	const char* fixedimage;
 	const char* flatimage;
+	const char *icqtemplate;
 	int cenx;
 	int ceny;
 	int border;

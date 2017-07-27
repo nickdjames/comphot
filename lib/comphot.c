@@ -282,7 +282,7 @@ int generate_profile_plot(const char *name, int points, float mag[])
 }
 
 // generate photometry check
-void generate_photom_check(char *name, float *img, long axes[], float rms, int cent[2], float scale, int points, float rad[], float med[])
+void generate_photom_check(char *name, float *img, long axes[], float rms, int cent[2], int points, float rad[], float med[])
 {
 	gdImagePtr image;
 	FILE *out;
@@ -308,11 +308,11 @@ void generate_photom_check(char *name, float *img, long axes[], float rms, int c
 	logratio = log10f(max/min);
 
 	for (i = points-1; i >= 0; i--) {
-		r1 = floor(rad[i]); // outer
-		r2 = i ? floor(rad[i-1]) : 0; // inner 
+		r1 = (int) floor(rad[i]); // outer
+		r2 = i ? (int) floor(rad[i-1]) : 0; // inner 
 		for (y = -r1; y <= r1; y++) {
 			for (x = -r1; x <= r1; x++) {
-				r = sqrt(x*x + y*y);
+				r = (int) floor(sqrt(x*x + y*y));
 				if ((r <= r1) && (r > r2)) {
 					ptr = get_pixel(checkimg, cent[0]+x, cent[1]+y, axes);
 					if (ptr)
@@ -435,7 +435,7 @@ void generate_sky_check(char *name, float *img, long axes[], float skyval, float
 
 // Extract magnitude data from the offset stack
 float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max,
-		float zp, float background, float rms, int rot, const char *object, float *coma, int border)
+		float zp, float background, float rms, int rot, const char *object, float *coma)
 {
 	int x, y;
 	// int ofs;
@@ -548,7 +548,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	}
 	sprintf(fname, "%s_photcheck.jpg", object);
 	strrep(fname, '/', '_');
-	generate_photom_check(fname, buf, axes, rms, cent, scale, point, rad, med);
+	generate_photom_check(fname, buf, axes, rms, cent, point, rad, med);
 
 	generate_profile_plot("profile.jpg", point, mag2);
 
@@ -584,6 +584,70 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 
 	return vem;
 }
+
+void paste(char *target, char *src)
+{
+	while (*src)
+		*target++ = *src++;
+}
+
+
+#define MAXICQ	150
+int generate_ICQ(const char *icqfile, int year, int month, double day, double mag, double comadia, double pix, double exposure)
+{
+	// char *template = "---------- ---- -- --.--    --.- U4 28.0T10----  --.--              ICQ XX JAMaaI     -------FL9 K6F CMP 5  7*          --.-s--.- ";
+	char icqbuf[MAXICQ];
+	char template[MAXICQ];
+	char buf[MAXICQ];
+	double apdia = comadia;
+	int exp;
+	char c;
+	FILE *icq;
+	char *p;
+
+	icq = fopen(icqfile, "r");
+	if (icq == NULL) {
+		fprintf(stderr, "Could not open ICQ template %s\n", icqfile);
+		return -1;
+	}
+	if (fgets(template, MAXICQ, icq) == NULL)
+		return -2;
+
+	fclose(icq);
+
+	// terminate on first non-printing char
+	p = template;
+	while (isprint(*p))
+		p++;
+	*p='\0';
+
+	strncpy(icqbuf, template, MAXICQ);
+	
+	sprintf(buf, "%4d %02d %05.2f", year, month, day); paste(&icqbuf[11], buf);
+	paste(&icqbuf[26], "Z"); // Visual equivalent magnitude key for COBS
+	sprintf(buf, "%4.1f", mag); paste(&icqbuf[28], buf);
+	sprintf(buf, "%5.2f", comadia); paste(&icqbuf[49], buf);
+
+	exp = (int) floor(exposure);
+
+	if (exp < 1000)
+		c = 'a';
+	else
+		c = 'A' + (exp-1000)/1000;
+	exp %= 1000;
+
+	sprintf(buf, "%c%3d", c, exp); paste(&icqbuf[43], buf); // FIXME see coding notes for exposure, A etc
+	sprintf(buf, "%4.1f%c%4.1f", pix, 's', pix); paste(&icqbuf[120], buf);
+	sprintf(buf, "C%5.2f%c", apdia, 'm'); paste(&icqbuf[86], buf); 
+
+	printf("0        1         2         3         4         5         6         7         8         9         0         1         2         3\n");
+	printf("1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\n");
+	printf("IIIYYYYMnL YYYY MM DD.DD eM mm.m:rrAAA.ATF/xxxx  dd.ddnDC &t.ttmANG ICQ XX*OBSxxf InT APERTURcamchip SFW C ## u.uu xx.x PIXELSIZE\n");
+	printf("%s\n", template);
+	printf("%s Comphot version %s\n", icqbuf, VERSION);
+	return 0;
+}
+
 
 void process( const ComphotConfig* config )
 {
@@ -758,18 +822,18 @@ void process( const ComphotConfig* config )
 
 	// do the main processing job
 	rot = 0; // FIXME
+	if (config->border)
+		printf("# RMS noise estimator has non-zero border (%d)\n", config->border);
 	rms = rms_sky(fixed_buf, axes, skyfix, config->border); // calculate RMS noise from fixed stack
-	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rms, rot, object, &coma, config->border);
-
-	printf("ICQ:  %4d %2d %5.2f    %4.1f   %4.1f\n",
-		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
-		vem, coma
-	);
+	vem = extract_magnitudes(offset_buf, axes, cent, scale, step, config->apradius, (float) zp, skyofs, rms, rot, object, &coma);
 
 	printf("COMPHOT: %s %4d %02d %06.3f %6.2f %6.2f %6.2f %6.2f %6.2f %7.1f %6.2f %s %s %s %s\n",
 		VERSION,
 		obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0,
 		vem, coma, skymag, zp, rms, skyofs, scale, creator, observer, object, config->offsetimage);
+
+	if (config->icqtemplate)
+		generate_ICQ(config->icqtemplate, obs_yr, obs_mn, obs_da + (3600 * obs_hr + 60 * obs_min + obs_sec)/86400.0, vem, coma, scale, exposure);
 
 	// then release storage and close image files
 	free(offset_buf);

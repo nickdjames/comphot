@@ -98,3 +98,16 @@ comphot -f skycorrect.fit offset.fit fixed.fit x y
 where skycorrect.fit is the name of the sky correction image.
 
 
+
+Generating an ICQ format output line
+====================================
+
+Comphot will generate and ICQ format data line if you use the -i option as in this example:
+
+comphot -f sky.fit -i ../../../../ICQtemplates/M72FF600D.icq Y_ofs_0000.fit Y_noofs_0000.fit 2641 1884 > 2015v2.icq
+
+The argument to the i option is a filename. This file shall contain one line only like the following:
+
+---------- ---- -- --.--  - --.- U4  7.2R 5----  --.--              ICQ XX JAMaaI     -------CDS CFC CMP 5  7*          --.----.- M72FF C600D (G), 970
+
+This provides a template for the ICQ report which should match your setup. The dashes will be filled in by comphot. Note that, in many cases the comet name is not available in the input data and so you will need to edit this part manually before submitting your data.

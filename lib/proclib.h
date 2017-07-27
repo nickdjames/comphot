@@ -48,5 +48,7 @@ float *img_medtile(float *img, long axes[], int n);
 
 int checksize(long img1[2], long img2[2]);
 
+int XYZ_to_sRGB(float *r, float *g, float *b, float *x, float *y, float *z, long axes[2]);
+
 #endif // PROCLIB_H
 

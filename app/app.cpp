@@ -17,6 +17,7 @@ struct Options
     std::string offsetimage;
     std::string fixedimage;
     std::string flatimage;
+    std::string icqtemplate;
     int cenx = 0;
     int ceny = 0;
     int border = 5; // ignore pixels this close to edge for estimates
@@ -91,6 +92,11 @@ Options parseOptions( int argc, char** argv )
         "Optional flat normalization image (FIT)"
     )
     (
+        "icqtemplate,i",
+        bpo::value< std::string >( &options.icqtemplate ),
+        "Optional ICQ template"
+    )
+    (
         "help,h",
         "Usage info"
     );
@@ -145,13 +151,16 @@ ComphotConfig createComphotConfig( const Options& options )
     config.border = options.border;
     config.apradius = options.apradius;
 
-    if ( !options.flatimage.empty() )
-    {
+    if ( !options.flatimage.empty() ) {
         config.flatimage = options.flatimage.c_str();
-    }
-    else
-    {
+    } else {
         config.flatimage = nullptr;
+    }
+
+    if ( !options.icqtemplate.empty() ) {
+        config.icqtemplate = options.icqtemplate.c_str();
+    } else {
+        config.icqtemplate = nullptr;
     }
 
     return config;

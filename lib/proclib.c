@@ -15,6 +15,22 @@ int checksize(long img1[2], long img2[2])
 	return 0;
 }
 
+// Convert CIE 1932 XYZ to ?? RGB
+// http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
+int XYZ_to_sRGB(float *r, float *g, float *b, float *x, float *y, float *z, long axes[2])
+{
+	const float sRGB[3][3] = { {3.2404542, -1.5371385, -0.4985314}, {-0.9692660,  1.8760108,  0.0415560}, {0.0556434, -0.2040259,  1.0572252} };
+	long pix;
+
+	for (pix = 0; pix < axes[0]*axes[1]; pix++) {
+		r[pix] = x[pix] * sRGB[0][0] + y[pix] * sRGB[0][1] + z[pix] * sRGB[0][2];
+		g[pix] = x[pix] * sRGB[1][0] + y[pix] * sRGB[1][1] + z[pix] * sRGB[1][2];
+		b[pix] = x[pix] * sRGB[2][0] + y[pix] * sRGB[2][1] + z[pix] * sRGB[2][2];
+	}
+
+	return 0;
+}
+
 // create a new image based on the source header but with potentially different size and bitpix
 void create_new_img_from_src(fitsfile *tgt, fitsfile *src, long axes[2], int bitpix)
 {
