@@ -17,6 +17,7 @@ typedef LIB_API struct ComphotConfig {
 	int cenx;
 	int ceny;
 	int border;
+	int photcheck;
 	float apradius;
 } ComphotConfig;
 

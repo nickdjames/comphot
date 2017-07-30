@@ -546,11 +546,12 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 		mag2[i] = zp - 2.5f * log10f(sum_med[i]);
 		printf("# %5.1f | %6d %7.0f | %5.1f %5.1f %5d %6.0f %6.0f %6.0f | %5.2f %5.2f\n", (i+1)*step, n1[i], sum_mean[i],  mean[i], med[i], n2[i],mean[i]*n2[i],  med[i]*n2[i],  sum_med[i], mag1[i], mag2[i]);
 	}
-	sprintf(fname, "%s_photcheck.jpg", object);
-	strrep(fname, '/', '_');
-	generate_photom_check(fname, buf, axes, rms, cent, point, rad, med);
-
-	generate_profile_plot("profile.jpg", point, mag2);
+	if (0) {
+		sprintf(fname, "%s_photcheck.jpg", object);
+		strrep(fname, '/', '_');
+		generate_photom_check(fname, buf, axes, rms, cent, point, rad, med);
+		generate_profile_plot("profile.jpg", point, mag2);
+	}
 
 	// output the multibox estimates
 	printf(" 10x10  20x20  30x30  40x40  50x50  60x60\n");
