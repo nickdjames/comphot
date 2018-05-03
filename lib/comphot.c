@@ -20,6 +20,7 @@
 #include <gdfontmb.h>
 #include <fitsio.h>
 #include <time.h>
+#include <ctype.h>
 #include <assert.h>
 
 #define	MAXBUF	1000
@@ -87,7 +88,7 @@ int norm_subtract(float *img, float *grad, long axes[2])
 
 
 // Calculate the sky level using annular apertures of increasing inner radius until a termination condition is met
-float sky_annulus(float *buf, long axes[2], int cent[2], float scale, float start, float width, float rms, float *maxr)
+float sky_annulus(float *buf, long axes[2], long cent[2], float scale, float start, float width, float rms, float *maxr)
 {
 	int r, pixused, errors;
 	float rmin, rmax, dist;
@@ -141,7 +142,7 @@ void plot_circle(gdImagePtr img, int cent[2], double r)
 }
 
 // Generate a check image which shows the comet's extent and the selected aperture sizes
-int generate_falsecolour_image(const char *name, float *buf, long axes[2], float rms, float max, int cent[2], float scale, float coma_outer, float sky_inner, int rot)
+int generate_falsecolour_image(const char *name, float *buf, long axes[2], float rms, float max, long cent[2], float scale, float coma_outer, float sky_inner, int rot)
 {
 	gdImagePtr image;
 	FILE *out;
@@ -201,7 +202,7 @@ int generate_falsecolour_image(const char *name, float *buf, long axes[2], float
 
 
 // Generate a check image which shows the comet's extent and the selected aperture sizes
-int generate_mono_image(const char *name, float *buf, long axes[2], float rms, float max, int cent[2], float scale, float apradius, int rot)
+int generate_mono_image(const char *name, float *buf, long axes[2], float rms, float max, long cent[2], float scale, float apradius, int rot)
 {
 	gdImagePtr image;
 	FILE *out;
@@ -237,7 +238,7 @@ int generate_mono_image(const char *name, float *buf, long axes[2], float rms, f
 	cen[1] = yr;
 
 	plot_circle(image, cen, ceil(apradius/scale));
-	sprintf(txtbuf, "%.0f\"", apradius);
+	sprintf(txtbuf, "%.0f\"", 2*apradius);
 	gdImageString(image, gdFontMediumBold, cen[0], cen[1]+ceil(apradius/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
 	out = fopen(name, "wb");
@@ -282,7 +283,7 @@ int generate_profile_plot(const char *name, int points, float mag[])
 }
 
 // generate photometry check
-void generate_photom_check(char *name, float *img, long axes[], float rms, int cent[2], int points, float rad[], float med[])
+void generate_photom_check(char *name, float *img, long axes[], float rms, long cent[2], int points, float rad[], float med[])
 {
 	gdImagePtr image;
 	FILE *out;
@@ -349,7 +350,12 @@ void generate_photom_check(char *name, float *img, long axes[], float rms, int c
 			gdImageTrueColorPixel(image, x, y) = gdTrueColor(red, green, blue);
 		}
 	}
-		plot_circle(image, cent, rad[points-1]);
+	{
+		int cen[2];
+		cen[0] = cent[0];
+		cen[1] = cent[1];
+		plot_circle(image, cen, rad[points-1]);
+	}
 
 	out = fopen(name, "wb");
 	if (out) {
@@ -364,7 +370,7 @@ void generate_photom_check(char *name, float *img, long axes[], float rms, int c
 
 
 // dump a sky check image
-void generate_sky_check(char *name, float *img, long axes[], float skyval, float rms, int cent[2], float scale, float sky_inner)
+void generate_sky_check(char *name, float *img, long axes[], float skyval, float rms, long cent[2], float scale, float sky_inner)
 {
 	gdImagePtr image;
 	FILE *out;
@@ -417,7 +423,12 @@ void generate_sky_check(char *name, float *img, long axes[], float skyval, float
 			gdImageTrueColorPixel(image, x, y) = gdTrueColor(red, green, blue);
 		}
 	}
-	plot_circle(image, cent, ceil(sky_inner/scale));
+	{
+		int cen[2];
+		cen[0] = cent[0];
+		cen[1] = cent[1];
+		plot_circle(image, cen, ceil(sky_inner/scale));
+	}
 	sprintf(txtbuf, "%.0f\"", sky_inner);
 	gdImageString(image, gdFontMediumBold, cent[0], cent[1]+ (int) ceil(sky_inner/scale), (unsigned char *) txtbuf, 0x00FFFFFF);
 
@@ -434,7 +445,7 @@ void generate_sky_check(char *name, float *img, long axes[], float skyval, float
 
 
 // Extract magnitude data from the offset stack
-float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, float step, float max,
+float extract_magnitudes(float *buf, long axes[2], long cent[2], float scale, float step, float max,
 		float zp, float background, float rms, int rot, const char *object, float *coma)
 {
 	int x, y;
@@ -462,7 +473,7 @@ float extract_magnitudes(float *buf, long axes[2], int cent[2], float scale, flo
 	printf("# Residual sky background in offset stack: %.1f. RMS sky from fixed %.1f\n", median(buf, axes[0] * axes[1]), rms);
 
 	find_centroid(buf, axes, cent, 8);
-	printf("# Centroid at %d %d, Max pixel is %.1f\n", cent[0], cent[1], maxpix = *(get_pixel(buf, cent[0], cent[1],  axes)));
+	printf("# Centroid at %ld %ld, Max pixel is %.1f\n", cent[0], cent[1], maxpix = *(get_pixel(buf, cent[0], cent[1],  axes)));
 
 	sky_annulus(buf, axes, cent, scale, 10, SEARCHRING, rms, &max); // search outwards from 10 arcsec to get limit of coma
 
@@ -656,7 +667,7 @@ void process( const ComphotConfig* config )
 	// FILE *flat;
 	int status;
 	long axes[2], axeschk[2];
-	int cent[2];
+	long cent[2];
 	// int bitpix;
 	float *offset_buf, *fixed_buf, *grad_buf;
 	float nulval = 0;
