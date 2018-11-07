@@ -11,6 +11,7 @@
 
 #include "comphot.h"
 #include "proclib.h"
+#include "fitting.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -27,6 +28,14 @@
 #define	APLIMIT 0.8 // sky background limit for aperture termination (in sigma)
 #define SKYRING		40 // arcsec
 #define SEARCHRING	20 // arcsec
+
+// Dummy function to get over link problem. Should be compiling proclib.c as a library
+int gauss_psf(float *img, long axes[2], double centre[2], double r1, double r2, double r3, GAUSSFIT *fit,  int verbose)
+{
+	fprintf(stderr, "This function should never be called!\n");
+	exit(2);
+}
+
 
 void strrep(char *s, char c1, char c2)
 {

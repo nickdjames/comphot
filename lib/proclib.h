@@ -12,6 +12,7 @@ typedef enum {
 typedef struct {
 	COORDTYPE type;
 	double x,y; // centroid
+	double range;
 	double psf_fwhm, psf_max, psf_sky; // used if PSF measured
 } COORD;
 
@@ -50,6 +51,8 @@ typedef struct {
 
 typedef struct {
 	int bitpix;
+	const char *obstime;
+	const char *comment;
 } FITSDESC;
 
 typedef enum  {
@@ -115,6 +118,7 @@ float *comet_stack(int n, float *images[], long axes[2], COORD starshift[], COOR
 float *stack_images(int n, float *images[], long axes[2], int drizzle, COORD shiftlist[], COMBINE_TYPE type, int verbose);
 int track_object(int n, float *images[], long axes[2], float skylevel[], COORD start, double r, COORD shiftlist[], GAUSSFIT *psf);
 COORD centre_alignlist(int n, COORD list[]);
+int mirror_image(float *buf, long axes[2]);
 
 #endif // PROCLIB_H
 
