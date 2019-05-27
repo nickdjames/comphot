@@ -12,5 +12,7 @@ target_include_directories (comphot PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${INCLUDE
 target_link_libraries (comphot LINK_PUBLIC ${LIBRARY_PATHS})
 
 # Set installation locations
-install (TARGETS comphot RUNTIME LIBRARY DESTINATION ${COMPHOT_DESTINATION})
+install (TARGETS comphot
+    RUNTIME DESTINATION ${COMPHOT_DESTINATION}
+    LIBRARY DESTINATION ${COMPHOT_DESTINATION})
 

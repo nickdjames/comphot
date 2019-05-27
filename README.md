@@ -35,8 +35,8 @@ sudo make install
 ```
 
 ### comphot
-comphot is aimed at multiple platforms and therefore we use CMake to generate the appropriate build configuration. To get started follow the steps above to build and install the required dependencies, then fork and clone this repo:
-````
+Comphot is aimed at multiple platforms and therefore we use CMake to generate the appropriate build configuration. To get started follow the steps above to build and install the required dependencies, then fork and clone this repo:
+```
 git clone https://github.com/<username>/comphot.git
 cd comphot
 ```
@@ -47,8 +47,14 @@ cd build
 cmake ../
 make
 ```
-Other platforms and other build systems are available using this more general approach:
+To build on other platforms or other build systems you can specify as required, e.g. for Windows using [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/):
 ```
-cmake -G <generator> ../
-cmake --build . --config <debug|release|...>
+cmake -G "Visual Studio 14 2015" ../
+cmake --build . --config Release
+```
+
+## Packaging
+CMake includes CPack which can be used to package comphot for distribution, e.g. to produce a Windows installer:
+```
+cpack -G WIX -C Release
 ```
